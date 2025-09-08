@@ -48,7 +48,7 @@ bool SDInterface::initSD() {
         this->spiExt = new SPIClass(FSPI);
       #endif
       Serial.println("Using external SPI configuration...");
-      this->spiExt->begin(SPI_SCK, SPI_MISO, SPI_MOSI, SD_CS);
+      this->spiExt.begin(SPI_SCK, SPI_MISO, SPI_MOSI, SD_CS);
       if (!SD.begin(SD_CS, *(this->spiExt))) {
     #elif defined(HAS_C5_SD)
       Serial.println("Using C5 SD configuration...");
@@ -71,7 +71,7 @@ bool SDInterface::initSD() {
 
         char sz[NUM_DIGITS + 1];
 
-        sz[NUM_DIGITS] =  0;
+        sz[NUM_DIGITS] = 0;
         for ( size_t i = NUM_DIGITS; i--; this->cardSizeMB /= 10)
         {
             sz[i] = '0' + (this->cardSizeMB % 10);
@@ -88,9 +88,9 @@ bool SDInterface::initSD() {
         Serial.println("/SCRIPTS created");
       }
 
-      this->sd_files = new LinkedList<String>();
+      this->sd_files = new std::vector<String>();
 
-      this->sd_files->add("Back");
+      this->sd_files.push_back("Back");
     
       return true;
   }
@@ -117,7 +117,7 @@ bool SDInterface::removeFile(String file_path) {
     return false;
 }
 
-void SDInterface::listDirToLinkedList(LinkedList<String>* file_names, String str_dir, String ext) {
+void SDInterface::listDirToLinkedList(std::vector<String>* file_names, String str_dir, String ext) {
   if (this->supported) {
     File dir = SD.open(str_dir);
     while (true)
@@ -134,11 +134,11 @@ void SDInterface::listDirToLinkedList(LinkedList<String>* file_names, String str
       String file_name = entry.name();
       if (ext != "") {
         if (file_name.endsWith(ext)) {
-          file_names->add(file_name);
+          file_names->push_back(file_name);
         }
       }
       else
-        file_names->add(file_name);
+        file_names->push_back(file_name);
     }
   }
 }
@@ -221,7 +221,7 @@ void SDInterface::runUpdate() {
     Serial.printf("Currently running: %s at 0x%X\n", running->label, running->address);
 
     const esp_partition_t *next = esp_ota_get_next_update_partition(NULL);
-    Serial.printf("Next OTA partition: %s at 0x%X\n", next->label, next->address);
+    Serial.printf("Next OTA partition: %s at 0x%X\n", next->label, running->address);
 
     esp_err_t result = esp_ota_set_boot_partition(next);
     Serial.printf("esp_ota_set_boot_partition result: %s\n", esp_err_to_name(result));
