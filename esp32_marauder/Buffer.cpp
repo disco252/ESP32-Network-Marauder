@@ -7,7 +7,7 @@ Buffer::Buffer(){
 }
 
 void Buffer::createFile(String name, bool is_pcap, bool is_gpx){
-  int i=0;
+  int i= 0;
   if (is_pcap) {
     do{
       fileName = "/"+name+"_"+(String)i+".pcap";
@@ -55,7 +55,7 @@ void Buffer::open(bool is_pcap){
 void Buffer::openFile(String file_name, fs::FS* fs, bool serial, bool is_pcap, bool is_gpx) {
   bool save_pcap = settings_obj.loadSetting<bool>("SavePCAP");
   if (!save_pcap) {
-    this->fs = NULL;
+    this->fs = 0;
     this->serial = false;
     writing = false;
     return;
