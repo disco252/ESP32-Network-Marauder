@@ -17,6 +17,16 @@ void EthernetDiagnostics::performTraceroute(IPAddress target) {
     // Add traceroute implementation here
 }
 
+void EthernetDiagnostics::pingTest(IPAddress target, int count) {
+    Serial.println("Pinging host...");
+    // Add ping test implementation here
+}
+
+void EthernetDiagnostics::networkScan() {
+    Serial.println("Performing network scan...");
+    // Add network scan implementation here
+}
+
 bool EthernetDiagnostics::isConnected() {
     return ethConnected;
 }
