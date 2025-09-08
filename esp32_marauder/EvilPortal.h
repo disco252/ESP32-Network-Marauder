@@ -11,7 +11,6 @@
 #include "settings.h"
 #ifdef HAS_SCREEN
   #include "Display.h"
-  #include <LinkedList.h>
 #endif
 #include "SDInterface.h"
 #include "Buffer.h"
@@ -22,7 +21,7 @@ extern SDInterface sd_obj;
 #ifdef HAS_SCREEN
   extern Display display_obj;
 #endif
-extern Buffer buffer_obj; 
+extern Buffer buffer_obj;
 
 #define WAITING 0
 #define GOOD 1
@@ -36,10 +35,11 @@ extern Buffer buffer_obj;
 #define MAX_AP_NAME_SIZE 32
 #define WIFI_SCAN_EVIL_PORTAL 30
 
-char apName[MAX_AP_NAME_SIZE] = "PORTAL";
+// ---- Only DECLARE, never define, global variables here ----
+extern char apName[MAX_AP_NAME_SIZE + 1];
 
 #ifndef HAS_PSRAM
-  char index_html[MAX_HTML_SIZE] = "TEST";
+  extern const char index_html[] PROGMEM;
 #else
   extern char* index_html;
 #endif
@@ -56,10 +56,10 @@ struct AccessPoint {
   uint8_t channel;
   uint8_t bssid[6];
   bool selected;
- // LinkedList<char>* beacon;
+  // std::vector<char> beacon;
   char beacon[2];
   int8_t rssi;
-  LinkedList<uint16_t>* stations;
+  std::vector<uint16_t> stations;
   uint16_t packets;
   uint8_t sec;
   bool wps;
@@ -95,7 +95,7 @@ class EvilPortal {
     void (*resetFunction)(void) = 0;
 
     bool setHtml();
-    bool setAP(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_points);
+    bool setAP(std::vector<ssid>* ssids, std::vector<AccessPoint>* access_points);
     void setupServer();
     void startPortal();
     void startAP();
@@ -112,17 +112,16 @@ class EvilPortal {
     bool using_serial_html;
     bool has_ap;
 
-    LinkedList<String>* html_files;
+    std::vector<String> html_files;
 
     void cleanup();
     String get_user_name();
     String get_password();
     bool setAP(String essid);
     void setup();
-    bool begin(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_points);
+    bool begin(std::vector<ssid>* ssids, std::vector<AccessPoint>* access_points);
     void main(uint8_t scan_mode);
     void setHtmlFromSerial();
-
 };
 
 #endif
