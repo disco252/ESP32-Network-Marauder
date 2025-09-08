@@ -140,7 +140,7 @@ struct MenuNode {
 // Full Menus
 struct Menu {
   String name;
-  LinkedList<MenuNode>* list;
+  std::vector<MenuNode> list;
   Menu                * parentMenu;
   uint16_t               selected = 0;
 };
