@@ -9,6 +9,7 @@
 #include <ArduinoJson.h>
 #include <algorithm>
 #include <vector>
+#include <LinkedList.h>
 
 #ifdef HAS_BT
   #include <NimBLEDevice.h> // 1.3.8, 2.3.2
@@ -493,7 +494,7 @@ class WiFiScan
     bool readARP(IPAddress targ_ip);
     bool singleARP(IPAddress ip_addr);
     void pingScan(uint8_t scan_mode = WIFI_PING_SCAN);
-    void portScan(uint8_t scan_mode = WIFI_PORT_SCAN_ALL, uint16_t targ_port = 22);
+    void portScan(uint8_t scan_mode, uint16_t color);
     bool isHostAlive(IPAddress ip);
     bool checkHostPort(IPAddress ip, uint16_t port, uint16_t timeout = 100);
     String extractManufacturer(const uint8_t* payload);
@@ -633,42 +634,17 @@ class WiFiScan
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 
-    #ifndef HAS_DUAL_BAND
-      wifi_init_config_t cfg2 = { \
-          .event_handler = &esp_event_send_internal, \
-          .osi_funcs = &g_wifi_osi_funcs, \
-          .wpa_crypto_funcs = g_wifi_default_wpa_crypto_funcs, \
-          .static_rx_buf_num = 6,\
-          .dynamic_rx_buf_num = 6,\
-          .tx_buf_type = 0,\
-          .static_tx_buf_num = 1,\
-          .dynamic_tx_buf_num = WIFI_DYNAMIC_TX_BUFFER_NUM,\
-          .cache_tx_buf_num = 0,\
-          .csi_enable = false,\
-          .ampdu_rx_enable = false,\
-          .ampdu_tx_enable = false,\
-          .amsdu_tx_enable = false,\
-          .nvs_enable = false,\
-          .nano_enable = WIFI_NANO_FORMAT_ENABLED,\
-          .rx_ba_win = 6,\
-          .wifi_task_core_id = WIFI_TASK_CORE_ID,\
-          .beacon_max_len = 752, \
-          .mgmt_sbuf_num = 8, \
-          .feature_caps = g_wifi_feature_caps, \
-          .sta_disconnected_pm = WIFI_STA_DISCONNECTED_PM_ENABLED,  \
-          .espnow_max_encrypt_num = 0, \
-          .magic = WIFI_INIT_CONFIG_MAGIC\
-      };
-    #else
-      wifi_country_t country = {
-        .cc = "PH",
-        .schan = 1,
-        .nchan = 13,
-        .policy = WIFI_COUNTRY_POLICY_AUTO,
-      };
-
-      wifi_init_config_t cfg2 = WIFI_INIT_CONFIG_DEFAULT();
-    #endif
+#ifndef HAS_DUAL_BAND
+wifi_init_config_t cfg2 = WIFI_INIT_CONFIG_DEFAULT();
+#else
+wifi_country_t country = {
+    .cc = "PH",
+    .schan = 1,
+    .nchan = 13,
+    .policy = WIFI_COUNTRY_POLICY_AUTO,
+};
+wifi_init_config_t cfg2 = WIFI_INIT_CONFIG_DEFAULT();
+#endif
 
     wifi_config_t ap_config;
 
