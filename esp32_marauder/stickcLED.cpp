@@ -1,64 +1,24 @@
-#include "stickcLED.h"
-// NB M5Stick C Plus LED is active low, so digitalWrite() calls are inverted
+#pragma once
 
-#ifdef MARAUDER_M5STICKCP2
-    #define M5LED_ON HIGH
-    #define M5LED_OFF LOW
-    #define STICKC_LED_PIN 19
-#else
-    #define M5LED_ON LOW
-    #define M5LED_OFF HIGH
-    #define STICKC_LED_PIN 10
-#endif
+#ifndef stickcLED_H
+#define stickcLED_H
 
-void stickcLED::RunSetup() {
-    pinMode(STICKC_LED_PIN, OUTPUT);
+#include "configs.h"
+#include "settings.h"
 
-if (!settings_obj.loadSetting<bool>("EnableLED")) {
-    digitalWrite(STICKC_LED_PIN, M5LED_OFF);
-    return;
-}
+#include <Arduino.h>
 
-delay(50);
 
-  digitalWrite(STICKC_LED_PIN, M5LED_ON);
-  delay(500);
-  digitalWrite(STICKC_LED_PIN, M5LED_OFF);
-  delay(250);
-  digitalWrite(STICKC_LED_PIN, M5LED_ON);
-  delay(500);
-  digitalWrite(STICKC_LED_PIN, M5LED_OFF);
-  delay(250);
-  digitalWrite(STICKC_LED_PIN, M5LED_ON);
-  delay(500);
-  digitalWrite(STICKC_LED_PIN, M5LED_OFF);
-}
+extern Settings settings_obj;
 
-void stickcLED::attackLED() {
-  if (!settings_obj.loadSetting<bool>("EnableLED"))
-    return;
-    
-  digitalWrite(STICKC_LED_PIN, M5LED_ON);
-  delay(300);
-  digitalWrite(STICKC_LED_PIN, M5LED_OFF);
-}
+class stickcLED {
 
-void stickcLED::sniffLED() {
-  if (!settings_obj.loadSetting<bool>("EnableLED"))
-    return;
-    
-  digitalWrite(STICKC_LED_PIN, M5LED_ON);
-  delay(300);
-  digitalWrite(STICKC_LED_PIN, M5LED_OFF);
-}
+    public:
+        void RunSetup();
+        void main();
+        void attackLED();
+        void sniffLED();
+        void offLED();
+};
 
-void stickcLED::offLED() {
-  if (!settings_obj.loadSetting<bool>("EnableLED"))
-    return;
-  
-  digitalWrite(STICKC_LED_PIN, M5LED_OFF);
-}
-
-void stickcLED::main() {
-  // do nothing
-}
+#endif  /* stickcLED_H */
