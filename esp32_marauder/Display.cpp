@@ -115,10 +115,10 @@ void Display::RunSetup()
   run_setup = false;
 
   // Need to declare new
-  display_buffer = new LinkedList<String>();
+  display_buffer = new std::vector<String>();
 
   #ifdef SCREEN_BUFFER
-    screen_buffer = new LinkedList<String>();
+    screen_buffer = new std::vector<String>();
   #endif
 
   #ifdef HAS_CYD_TOUCH
@@ -418,7 +418,7 @@ void Display::clearScreen()
 void Display::scrollScreenBuffer(bool down) {
   // Scroll screen normal direction (Up)
   if (!down) {
-    this->screen_buffer->shift();
+    this->screen_buffer.shift();
   }
 }
 #endif
@@ -455,22 +455,22 @@ void Display::processAndPrintString(TFT_eSPI& tft, const String& originalString)
 
 void Display::displayBuffer(bool do_clear)
 {
-  if (this->display_buffer->size() > 0)
+  if (this->display_buffer.size() > 0)
   {
     int print_count = 1;
-    while ((display_buffer->size() > 0) && (print_count > 0))
+    while ((display_buffer.size() > 0) && (print_count > 0))
     {
 
       #ifndef SCREEN_BUFFER
         xPos = 0;
-        if ((display_buffer->size() > 0) && (!loading))
+        if ((display_buffer.size() > 0) && (!loading))
         {
           printing = true;
           delay(print_delay_1);
           yDraw = scroll_line(TFT_RED);
           tft.setCursor(xPos, yDraw);
           tft.setTextColor(TFT_GREEN, TFT_BLACK);
-          tft.print(display_buffer->shift());
+          tft.print(display_buffer.shift());
           printing = false;
           delay(print_delay_2);
         }
@@ -480,18 +480,18 @@ void Display::displayBuffer(bool do_clear)
           blank[(18+(yStart - TOP_FIXED_AREA_2) / TEXT_HEIGHT)%19] = xPos;
       #else
         xPos = 0;
-        if (this->screen_buffer->size() >= MAX_SCREEN_BUFFER)
+        if (this->screen_buffer.size() >= MAX_SCREEN_BUFFER)
           this->scrollScreenBuffer();
 
-        screen_buffer->add(display_buffer->shift());
+        screen_buffer.push_back(display_buffer.shift());
 
-        for (int i = 0; i < this->screen_buffer->size(); i++) {
+        for (int i = 0; i < this->screen_buffer.size(); i++) {
           tft.setCursor(xPos, (i * 12) + (SCREEN_HEIGHT / 6));
           String spaces = String(' ', TFT_WIDTH / CHAR_WIDTH);
           tft.print(spaces);
           tft.setCursor(xPos, (i * 12) + (SCREEN_HEIGHT / 6));
 
-          this->processAndPrintString(tft, this->screen_buffer->get(i));
+          this->processAndPrintString(tft, this->screen_buffer[i]);
         }
       #endif
 
