@@ -4,7 +4,7 @@
 
 extern GpsInterface gps_obj;
 
-char nmeaBuffer[100];
+char nmeaBuffer[256];
 
 MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
 
@@ -88,20 +88,20 @@ void GpsInterface::enqueue(MicroNMEA& nmea){
             int chk_brk=content.rfind('*');
 
             if(tot_brk!=std::string::npos && num_brk!=std::string::npos && txt_brk!=std::string::npos && chk_brk!=std::string::npos
-                && chk_brk>txt_brk && txt_brk>num_brk && num_brk>tot_brk && tot_brk>=0){
+                && chk_brk>txt_brk && txt_brk>num_brk && num_brk>tot_brk && tot_brk>= 0){
               std::string total_str=content.substr(0,tot_brk);
               std::string num_str=content.substr(tot_brk+1,num_brk-tot_brk-1);
               std::string type_str=content.substr(num_brk+1,txt_brk-num_brk-1);
               std::string text_str=content.substr(txt_brk+1,chk_brk-txt_brk-1);
               std::string checksum=content.substr(chk_brk+1,std::string::npos);
 
-              int total=0;
+              int total= 0;
               if(total_str.length()) total=atoi(total_str.c_str());
 
-              int num=0;
+              int num= 0;
               if(num_str.length()) num=atoi(num_str.c_str());
 
-              int type=0;
+              int type= 0;
               if(type_str.length()) type=atoi(type_str.c_str());
 
               if(text_str.length() && checksum.length()){
@@ -116,26 +116,26 @@ void GpsInterface::enqueue(MicroNMEA& nmea){
                 if((num<=1||total<=1) && this->queue_enabled_flag){
                   if(this->text){
                     if(this->text_in){
-                      int size=text_in->size();
+                      int size=text_in.size();
                       if(size){
                         #ifdef GPS_TEXT_MAXCYCLES
                           if(this->text_cycles>=GPS_TEXT_MAXCYCLES){
                         #else
                           if(this->text_cycles){
                         #endif
-                            if(this->text->size()){
-                              LinkedList<String> *delme=this->text;
-                              this->text=new LinkedList<String>;
+                            if(this->text.size()){
+                              std::vector<String> *delme=this->text;
+                              this->text=new std::vector<String>;
                               delete delme;
-                              this->text_cycles=0;
+                              this->text_cycles= 0;
                             }
                           }
                         
-                        for(int i=0;i<size;i++){
-                          this->text->add(this->text_in->get(i));
+                        for(int i= 0;i<size;i++){
+                          this->text.push_back(this->text_in[i]);
                         }
-                        LinkedList<String> *delme=this->text_in;
-                        this->text_in=new LinkedList<String>;
+                        std::vector<String> *delme=this->text_in;
+                        this->text_in=new std::vector<String>;
                         delete delme;
                         this->text_cycles++;
 
@@ -143,31 +143,31 @@ void GpsInterface::enqueue(MicroNMEA& nmea){
                       }
                     }
                     else
-                      this->text_in=new LinkedList<String>;
+                      this->text_in=new std::vector<String>;
                   }
                   else{
                     if(this->text_in){
-                      this->text_cycles=0;
+                      this->text_cycles= 0;
                       this->text=this->text_in;
-                      if(this->text->size()){
-                        if(this->gps_text=="") this->gps_text=this->text->get(0);
+                      if(this->text.size()){
+                        if(this->gps_text=="") this->gps_text=this->text[0];
                         this->text_cycles++;
                       }
-                      this->text_in=new LinkedList<String>;
+                      this->text_in=new std::vector<String>;
                     }
                     else {
-                      this->text_cycles=0;
-                      this->text=new LinkedList<String>;
-                      this->text_in=new LinkedList<String>;
+                      this->text_cycles= 0;
+                      this->text=new std::vector<String>;
+                      this->text_in=new std::vector<String>;
                     }
                   }
 
-                  this->text_in->add(text);
+                  this->text_in.push_back(text);
                 }
                 else if(this->queue_enabled_flag){
-                  if(!this->text_in) this->text_in=new LinkedList<String>;
-                  this->text_in->add(text);
-                  int size=this->text_in->size();
+                  if(!this->text_in) this->text_in=new std::vector<String>;
+                  this->text_in.push_back(text);
+                  int size=this->text_in.size();
 
                   #ifdef GPS_TEXT_MAXLINES
                     if(size>=GPS_TEXT_MAXLINES){
@@ -179,19 +179,19 @@ void GpsInterface::enqueue(MicroNMEA& nmea){
                       #else
                         if(this->text_cycles){
                       #endif
-                          if(this->text->size()){
-                            LinkedList<String> *delme=this->text;
-                            this->text=new LinkedList<String>;
+                          if(this->text.size()){
+                            std::vector<String> *delme=this->text;
+                            this->text=new std::vector<String>;
                             delete delme;
-                            this->text_cycles=0;
+                            this->text_cycles= 0;
                           }
                         }
                       
-                        for(int i=0;i<size;i++)
-                          this->text->add(this->text_in->get(i));
+                        for(int i= 0;i<size;i++)
+                          this->text.push_back(this->text_in[i]);
 
-                        LinkedList<String> *delme=this->text_in;
-                        this->text_in=new LinkedList<String>;
+                        std::vector<String> *delme=this->text_in;
+                        this->text_in=new std::vector<String>;
                         delete delme;
                         this->text_cycles++;
                       }
@@ -200,7 +200,7 @@ void GpsInterface::enqueue(MicroNMEA& nmea){
                   if(num<=1||total<=1) this->gps_text=text;
 
                 if(this->gps_text=="") this->gps_text=text;
-                unparsed=0;
+                unparsed= 0;
               }
             }
           }
@@ -217,16 +217,16 @@ void GpsInterface::enqueue(MicroNMEA& nmea){
 
         if(this->queue){
           #ifdef GPS_NMEA_MAXQUEUE
-            if(this->queue->size()>=GPS_NMEA_MAXQUEUE)
+            if(this->queue.size()>=GPS_NMEA_MAXQUEUE)
           #else
-            if(this->queue->size()>=30)
+            if(this->queue.size()>=30)
           #endif
               this->flush_queue();
         }
         else
            this->new_queue();
 
-        this->queue->add(line);
+        this->queue.push_back(line);
       }
       else
         if(!this->queue)
@@ -245,9 +245,9 @@ void GpsInterface::enable_queue(){
     if(!this->queue)
       this->new_queue();
     if(!this->text)
-      this->text=new LinkedList<String>;
+      this->text=new std::vector<String>;
     if(!this->text_in)
-      this->text_in=new LinkedList<String>;
+      this->text_in=new std::vector<String>;
   }
   else {
     this->flush_queue();
@@ -256,7 +256,7 @@ void GpsInterface::enable_queue(){
 }
 
 void GpsInterface::disable_queue(){
-  this->queue_enabled_flag=0;
+  this->queue_enabled_flag= 0;
   this->flush_queue();
 }
 
@@ -264,12 +264,12 @@ bool GpsInterface::queue_enabled(){
   return this->queue_enabled_flag;
 }
 
-LinkedList<nmea_sentence_t>* GpsInterface::get_queue(){
+std::vector<nmea_sentence_t>* GpsInterface::get_queue(){
   return this->queue;
 }
 
 void GpsInterface::new_queue(){
-  this->queue=new LinkedList<nmea_sentence_t>;
+  this->queue=new std::vector<nmea_sentence_t>;
 }
 
 void GpsInterface::flush_queue(){
@@ -279,8 +279,8 @@ void GpsInterface::flush_queue(){
 
 void GpsInterface::flush_queue_nmea(){
   if(this->queue){
-    if(this->queue->size()){
-      LinkedList<nmea_sentence_t> *delme=this->queue;
+    if(this->queue.size()){
+      std::vector<nmea_sentence_t> *delme=this->queue;
       this->new_queue();
       delete delme;
     }
@@ -295,29 +295,29 @@ void GpsInterface::flush_text(){
 }
 
 void GpsInterface::flush_queue_text(){
-  this->text_cycles=0;
+  this->text_cycles= 0;
 
   if(this->text){
-    if(this->text->size()){
-      LinkedList<String> *delme=this->text;
-      this->text=new LinkedList<String>;
+    if(this->text.size()){
+      std::vector<String> *delme=this->text;
+      this->text=new std::vector<String>;
       delete delme;
     }
   }
   else
-    this->text=new LinkedList<String>;
+    this->text=new std::vector<String>;
 }
 
 void GpsInterface::flush_queue_textin(){
   if(this->text_in){
-    if(this->text_in->size()){
-      LinkedList<String> *delme=this->text_in;
-      this->text_in=new LinkedList<String>;
+    if(this->text_in.size()){
+      std::vector<String> *delme=this->text_in;
+      this->text_in=new std::vector<String>;
       delete delme;
     }
   }
   else
-    this->text_in=new LinkedList<String>;
+    this->text_in=new std::vector<String>;
 }
 
 void GpsInterface::sendSentence(const char* sentence){
@@ -380,7 +380,7 @@ String GpsInterface::generateGXgga(){
   snprintf(hdopStr, 13, "%01.2f,", 2.5 * (((float)(hdop))/10));
 
   long altitude;
-  if(!nmea.getAltitude(altitude)) altitude=0;
+  if(!nmea.getAltitude(altitude)) altitude= 0;
   char altStr[9];
   snprintf(altStr, 9, "%01.1f,", altitude/1000.0);
 
@@ -431,7 +431,7 @@ String GpsInterface::generateType(){
   if(this->type_flag<8) //8=BeiDou in BD mode
     msg_type+='G';
 
-  if(this->type_flag == GPSTYPE_NATIVE){ //type_flag=0
+  if(this->type_flag == GPSTYPE_NATIVE){ //type_flag= 0
     char system=this->nav_system;
     if(system)
       msg_type+=system;
@@ -454,7 +454,7 @@ String GpsInterface::generateType(){
     msg_type+='B';
     msg_type+='D';
   }
-  else{ //type_flag=1=all ... also default if unset/wrong (obj default is type_flag=0=native)
+  else{ //type_flag=1=all ... also default if unset/wrong (obj default is type_flag= 0=native)
     if(this->type_flag>=8) //catch uncaught first char, assume G if not already output
       msg_type+='G';
     msg_type+='N';
@@ -580,14 +580,14 @@ String GpsInterface::getText() {
 
 int GpsInterface::getTextQueueSize() {
   if(this->queue_enabled_flag){
-    bool exists=0;
+    bool exists= 0;
     if(this->text){
-      int size=this->text->size();
+      int size=this->text.size();
       if(size) return size;
       exists=1;
     }
     if(this->text_in){
-      int size=this->text_in->size();
+      int size=this->text_in.size();
       if(size) return size;
       exists=1;
     }
@@ -603,11 +603,11 @@ int GpsInterface::getTextQueueSize() {
 String GpsInterface::getTextQueue(bool flush) {
   if(this->queue_enabled_flag){
     if(this->text){
-      int size=this->text->size();
+      int size=this->text.size();
       if(size){
         String text;
-        for(int i=0;i<size;i++){
-          String now=this->text_in->get(i);
+        for(int i= 0;i<size;i++){
+          String now=this->text_in[i];
           if(now!=""){
             if(text!=""){
               text+='\r';
@@ -617,31 +617,31 @@ String GpsInterface::getTextQueue(bool flush) {
           }
         }
         if(flush){
-          LinkedList<String> *delme=this->text;
-          this->text_cycles=0;
+          std::vector<String> *delme=this->text;
+          this->text_cycles= 0;
           this->text=this->text_in;
-          if(!this->text) this->text=new LinkedList<String>;
-          if(this->text->size()) this->text_cycles++;
-          this->text_in=new LinkedList<String>;
+          if(!this->text) this->text=new std::vector<String>;
+          if(this->text.size()) this->text_cycles++;
+          this->text_in=new std::vector<String>;
           delete delme;
         }
         return text;
       }
     }
     else{
-      this->text=new LinkedList<String>;
-      this->text_cycles=0;
+      this->text=new std::vector<String>;
+      this->text_cycles= 0;
     }
 
     if(this->text_in){
-      int size=this->text_in->size();
+      int size=this->text_in.size();
       if(size){
-        LinkedList<String> *buffer=this->text_in;
+        std::vector<String> *buffer=this->text_in;
         if(flush)
-          this->text_in=new LinkedList<String>;
+          this->text_in=new std::vector<String>;
         String text;
-        for(int i=0;i<size;i++){
-          String now=buffer->get(i);
+        for(int i= 0;i<size;i++){
+          String now=buffer[i];
           if(now!=""){
             if(text!=""){
               text+='\r';
@@ -656,7 +656,7 @@ String GpsInterface::getTextQueue(bool flush) {
       }
     }
     else
-      this->text_in=new LinkedList<String>;
+      this->text_in=new std::vector<String>;
 
     return this->gps_text;
   }
