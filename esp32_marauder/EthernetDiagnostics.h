@@ -11,12 +11,13 @@ private:
     bool ethConnected;
     IPAddress localIP;
     IPAddress gateway;
-    
+
 public:
     void init();
     void scanDHCPServers();
     void performTraceroute(IPAddress target);
     void pingTest(IPAddress target, int count);
+    void networkScan();
     bool isConnected();
 };
 
