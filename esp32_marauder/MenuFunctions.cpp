@@ -30,10 +30,10 @@ MenuFunctions::MenuFunctions()
     uint16_t c;
   
     display_obj.tft.startWrite();
-    display_obj.tft.setAddrWindow(area->x1, area->y1, (area->x2 - area->x1 + 1), (area->y2 - area->y1 + 1));
-    for (int y = area->y1; y <= area->y2; y++) {
-      for (int x = area->x1; x <= area->x2; x++) {
-        c = color_p->full;
+    display_obj.tft.setAddrWindow(area.x1, area.y1, (area.x2 - area.x1 + 1), (area.y2 - area.y1 + 1));
+    for (int y = area.y1; y <= area.y2; y++) {
+      for (int x = area.x1; x <= area.x2; x++) {
+        c = color_p.full;
         display_obj.tft.writeColor(c, 1);
         color_p++;
       }
@@ -67,10 +67,10 @@ MenuFunctions::MenuFunctions()
     else
     {
   
-      data->state = touched ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL; 
+      data.state = touched ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL; 
        
-      data->point.x = touchX;
-      data->point.y = touchY;
+      data.point.x = touchX;
+      data.point.y = touchY;
   
     }
   
@@ -113,8 +113,8 @@ MenuFunctions::MenuFunctions()
 
   // GFX Function to build a list showing all Stations scanned
   void MenuFunctions::addStationGFX(){
-    extern LinkedList<Station>* stations;
-    extern LinkedList<AccessPoint>* access_points;
+    extern std::vector<Station> stations;
+    extern std::vector<AccessPoint> access_points;
     extern WiFiScan wifi_scan_obj;
   
     lv_obj_t * list1 = lv_list_create(lv_scr_act(), NULL);
@@ -130,8 +130,8 @@ MenuFunctions::MenuFunctions()
     lv_obj_set_event_cb(list_btn, station_list_cb);
 
     char addr[] = "00:00:00:00:00:00";
-    for (int x = 0; x < access_points->size(); x++) {
-      AccessPoint cur_ap = access_points->get(x);
+    for (int x = 0; x < access_points.size(); x++) {
+      AccessPoint cur_ap = access_points[x];
 
       // Add non clickable button for AP
       String full_label = "AP: " + cur_ap.essid;
@@ -140,9 +140,9 @@ MenuFunctions::MenuFunctions()
       list_btn = lv_list_add_btn(list1, NULL, buf);
       lv_btn_set_checkable(list_btn, false);
       
-      int cur_ap_sta_len = access_points->get(x).stations->size();
+      int cur_ap_sta_len = access_points[x].stations.size();
       for (int y = 0; y < cur_ap_sta_len; y++) {
-        Station cur_sta = stations->get(cur_ap.stations->get(y));
+        Station cur_sta = stations[cur_ap.stations.get(y]);
         // Convert uint8_t MAC to char array
         wifi_scan_obj.getMAC(addr, cur_sta.mac, 0);
         
@@ -158,7 +158,7 @@ MenuFunctions::MenuFunctions()
 
   // Function to work with list of Stations
   void station_list_cb(lv_obj_t * btn, lv_event_t event) {
-    extern LinkedList<Station>* stations;
+    extern std::vector<Station> stations;
     extern MenuFunctions menu_function_obj;
     extern WiFiScan wifi_scan_obj;
   
@@ -173,9 +173,9 @@ MenuFunctions::MenuFunctions()
         Serial.println("Exiting...");
         lv_obj_del_async(lv_obj_get_parent(lv_obj_get_parent(btn)));
   
-        for (int i = 0; i < stations->size(); i++) {
-          if (stations->get(i).selected) {
-            wifi_scan_obj.getMAC(addr, stations->get(i).mac, 0);
+        for (int i = 0; i < stations.size(); i++) {
+          if (stations[i].selected) {
+            wifi_scan_obj.getMAC(addr, stations[i].mac, 0);
             Serial.print("Selected: ");
             Serial.println(addr);
           }
@@ -190,26 +190,26 @@ MenuFunctions::MenuFunctions()
     
     if (event == LV_EVENT_VALUE_CHANGED) {     
       if (lv_btn_get_state(btn) == LV_BTN_STATE_CHECKED_RELEASED) {
-        for (int i = 0; i < stations->size(); i++) {
-          wifi_scan_obj.getMAC(addr, stations->get(i).mac, 0); 
+        for (int i = 0; i < stations.size(); i++) {
+          wifi_scan_obj.getMAC(addr, stations[i].mac, 0); 
           if (strcmp(addr, btn_text.c_str()) == 0) {
             Serial.print("Adding Station: ");
             Serial.println(addr);
-            Station sta = stations->get(i);
+            Station sta = stations[i];
             sta.selected = true;
-            stations->set(i, sta);
+            stations[i] = sta;
           }
         }
       }
       else {
-        for (int i = 0; i < stations->size(); i++) {
-          wifi_scan_obj.getMAC(addr, stations->get(i).mac, 0); 
+        for (int i = 0; i < stations.size(); i++) {
+          wifi_scan_obj.getMAC(addr, stations[i].mac, 0); 
           if (strcmp(addr, btn_text.c_str()) == 0) {
             Serial.print("Removing Station: ");
             Serial.println(addr);
-            Station sta = stations->get(i);
+            Station sta = stations[i];
             sta.selected = false;
-            stations->set(i, sta);
+            stations[i] = sta;
           }
         }
       }
@@ -232,9 +232,9 @@ MenuFunctions::MenuFunctions()
     list_btn = lv_list_add_btn(list1, LV_SYMBOL_CLOSE, text09);
     lv_obj_set_event_cb(list_btn, html_list_cb);
   
-    for (int i = 1; i < evil_portal_obj.html_files->size(); i++) {
-      char buf[evil_portal_obj.html_files->get(i).length() + 1] = {};
-      evil_portal_obj.html_files->get(i).toCharArray(buf, evil_portal_obj.html_files->get(i).length() + 1);
+    for (int i = 1; i < evil_portal_obj.html_files.size(); i++) {
+      char buf[evil_portal_obj.html_files[i].length() + 1] = {};
+      evil_portal_obj.html_files[i].toCharArray(buf, evil_portal_obj.html_files[i].length() + 1);
       
       list_btn = lv_list_add_btn(list1, LV_SYMBOL_FILE, buf);
       lv_btn_set_checkable(list_btn, true);
@@ -259,9 +259,9 @@ MenuFunctions::MenuFunctions()
         Serial.println("Exiting...");
         lv_obj_del_async(lv_obj_get_parent(lv_obj_get_parent(btn)));
   
-        for (int i = 1; i < evil_portal_obj.html_files->size(); i++) {
+        for (int i = 1; i < evil_portal_obj.html_files.size(); i++) {
           if (i == evil_portal_obj.selected_html_index) {
-            Serial.println("Selected: " + (String)evil_portal_obj.html_files->get(i));
+            Serial.println("Selected: " + (String)evil_portal_obj.html_files[i]);
           }
         }
   
@@ -274,11 +274,11 @@ MenuFunctions::MenuFunctions()
     
     if (event == LV_EVENT_VALUE_CHANGED) {      
       if (lv_btn_get_state(btn) == LV_BTN_STATE_CHECKED_RELEASED) {
-        for (int i = 1; i < evil_portal_obj.html_files->size(); i++) {
-          if (evil_portal_obj.html_files->get(i) == btn_text) {
-            Serial.println("Setting HTML: " + (String)evil_portal_obj.html_files->get(i));
+        for (int i = 1; i < evil_portal_obj.html_files.size(); i++) {
+          if (evil_portal_obj.html_files[i] == btn_text) {
+            Serial.println("Setting HTML: " + (String)evil_portal_obj.html_files[i]);
             evil_portal_obj.selected_html_index = i;
-            evil_portal_obj.target_html_name = (String)evil_portal_obj.html_files->get(i);
+            evil_portal_obj.target_html_name = (String)evil_portal_obj.html_files[i];
           }
         }
 
@@ -286,7 +286,7 @@ MenuFunctions::MenuFunctions()
         lv_obj_t * list = lv_obj_get_parent(btn);
 
         lv_obj_t * next_btn = lv_obj_get_child(list, NULL);
-        while (next_btn != NULL) {
+        while (next_btn != 0) {
           if (next_btn != btn) {
             lv_btn_set_state(next_btn, LV_BTN_STATE_RELEASED);
           }
@@ -299,8 +299,8 @@ MenuFunctions::MenuFunctions()
   // GFX Function to build a list showing all APs scanned
   void MenuFunctions::addAPGFX(String type){
     extern WiFiScan wifi_scan_obj;
-    extern LinkedList<AccessPoint>* access_points;
-    extern LinkedList<AirTag>* airtags;
+    extern std::vector<AccessPoint> access_points;
+    extern std::vector<AirTag> airtags;
   
     lv_obj_t * list1 = lv_list_create(lv_scr_act(), NULL);
     lv_obj_set_size(list1, 160, 200);
@@ -315,9 +315,9 @@ MenuFunctions::MenuFunctions()
     lv_obj_set_event_cb(list_btn, ap_list_cb);
   
     if ((type == "AP") || (type == "AP Info")) {
-      for (int i = 0; i < access_points->size(); i++) {
-        char buf[access_points->get(i).essid.length() + 1] = {};
-        access_points->get(i).essid.toCharArray(buf, access_points->get(i).essid.length() + 1);
+      for (int i = 0; i < access_points.size(); i++) {
+        char buf[access_points[i].essid.length() + 1] = {};
+        access_points[i].essid.toCharArray(buf, access_points[i].essid.length() + 1);
         
         list_btn = lv_list_add_btn(list1, LV_SYMBOL_WIFI, buf);
         lv_btn_set_checkable(list_btn, true);
@@ -326,20 +326,20 @@ MenuFunctions::MenuFunctions()
         else if (type == "AP Info")
           lv_obj_set_event_cb(list_btn, ap_info_list_cb);
     
-        if (access_points->get(i).selected)
+        if (access_points[i].selected)
           lv_btn_toggle(list_btn);
       }
     }
     else if (type == "Airtag") {
-      for (int i = 0; i < airtags->size(); i++) {
-        char buf[airtags->get(i).mac.length() + 1] = {};
-        airtags->get(i).mac.toCharArray(buf, airtags->get(i).mac.length() + 1);
+      for (int i = 0; i < airtags.size(); i++) {
+        char buf[airtags[i].mac.length() + 1] = {};
+        airtags[i].mac.toCharArray(buf, airtags[i].mac.length() + 1);
         
         list_btn = lv_list_add_btn(list1, LV_SYMBOL_BLUETOOTH, buf);
         lv_btn_set_checkable(list_btn, true);
         lv_obj_set_event_cb(list_btn, at_list_cb);
     
-        //if (airtags->get(i).selected)
+        //if (airtags[i].selected)
         //  lv_btn_toggle(list_btn);
       }
     }
@@ -348,7 +348,7 @@ MenuFunctions::MenuFunctions()
   void at_list_cb(lv_obj_t * btn, lv_event_t event) {
     extern MenuFunctions menu_function_obj;
     extern WiFiScan wifi_scan_obj;
-    extern LinkedList<AirTag>* airtags;
+    extern std::vector<AirTag> airtags;
     extern Display display_obj;
   
     String btn_text = lv_list_get_btn_text(btn);
@@ -363,9 +363,9 @@ MenuFunctions::MenuFunctions()
         Serial.println("Exiting...");
         lv_obj_del_async(lv_obj_get_parent(lv_obj_get_parent(btn)));
   
-        for (int i = 0; i < airtags->size(); i++) {
-          if (airtags->get(i).selected) {
-            Serial.println("Selected: " + (String)airtags->get(i).mac);
+        for (int i = 0; i < airtags.size(); i++) {
+          if (airtags[i].selected) {
+            Serial.println("Selected: " + (String)airtags[i].mac);
           }
         }
   
@@ -379,18 +379,18 @@ MenuFunctions::MenuFunctions()
     if (event == LV_EVENT_VALUE_CHANGED) {      
       if (lv_btn_get_state(btn) == LV_BTN_STATE_CHECKED_RELEASED) {
         bool do_that_thang = false;
-        for (int i = 0; i < airtags->size(); i++) {
-          if (airtags->get(i).mac == btn_text) {
-            Serial.println("Selecting Airtag: " + (String)airtags->get(i).mac);
-            AirTag at = airtags->get(i);
+        for (int i = 0; i < airtags.size(); i++) {
+          if (airtags[i].mac == btn_text) {
+            Serial.println("Selecting Airtag: " + (String)airtags[i].mac);
+            AirTag at = airtags[i];
             at.selected = true;
-            airtags->set(i, at);
+            airtags[i] = at;
             do_that_thang = true;
           }
           else {
-            AirTag at = airtags->get(i);
+            AirTag at = airtags[i];
             at.selected = false;
-            airtags->set(i, at);
+            airtags[i] = at;
           }
         }
         // Start spoofing airtag
@@ -406,12 +406,12 @@ MenuFunctions::MenuFunctions()
         }
       }
       else {
-        for (int i = 0; i < airtags->size(); i++) {
-          if (airtags->get(i).mac == btn_text) {
-            Serial.println("Deselecting Airtag: " + (String)airtags->get(i).mac);
-            AirTag at = airtags->get(i);
+        for (int i = 0; i < airtags.size(); i++) {
+          if (airtags[i].mac == btn_text) {
+            Serial.println("Deselecting Airtag: " + (String)airtags[i].mac);
+            AirTag at = airtags[i];
             at.selected = false;
-            airtags->set(i, at);
+            airtags[i] = at;
           }
         }
       }
@@ -419,7 +419,7 @@ MenuFunctions::MenuFunctions()
   }
   
   void ap_list_cb(lv_obj_t * btn, lv_event_t event) {
-    extern LinkedList<AccessPoint>* access_points;
+    extern std::vector<AccessPoint> access_points;
     extern MenuFunctions menu_function_obj;
     extern WiFiScan wifi_scan_obj;
   
@@ -433,9 +433,9 @@ MenuFunctions::MenuFunctions()
         Serial.println("Exiting...");
         lv_obj_del_async(lv_obj_get_parent(lv_obj_get_parent(btn)));
   
-        for (int i = 0; i < access_points->size(); i++) {
-          if (access_points->get(i).selected) {
-            Serial.println("Selected: " + (String)access_points->get(i).essid);
+        for (int i = 0; i < access_points.size(); i++) {
+          if (access_points[i].selected) {
+            Serial.println("Selected: " + (String)access_points[i].essid);
           }
         }
   
@@ -448,22 +448,22 @@ MenuFunctions::MenuFunctions()
     
     if (event == LV_EVENT_VALUE_CHANGED) {      
       if (lv_btn_get_state(btn) == LV_BTN_STATE_CHECKED_RELEASED) {
-        for (int i = 0; i < access_points->size(); i++) {
-          if (access_points->get(i).essid == btn_text) {
-            Serial.println("Adding AP: " + (String)access_points->get(i).essid);
-            AccessPoint ap = access_points->get(i);
+        for (int i = 0; i < access_points.size(); i++) {
+          if (access_points[i].essid == btn_text) {
+            Serial.println("Adding AP: " + (String)access_points[i].essid);
+            AccessPoint ap = access_points[i];
             ap.selected = true;
-            access_points->set(i, ap);
+            access_points[i] = ap;
           }
         }
       }
       else {
-        for (int i = 0; i < access_points->size(); i++) {
-          if (access_points->get(i).essid == btn_text) {
-            Serial.println("Removing AP: " + (String)access_points->get(i).essid);
-            AccessPoint ap = access_points->get(i);
+        for (int i = 0; i < access_points.size(); i++) {
+          if (access_points[i].essid == btn_text) {
+            Serial.println("Removing AP: " + (String)access_points[i].essid);
+            AccessPoint ap = access_points[i];
             ap.selected = false;
-            access_points->set(i, ap);
+            access_points[i] = ap;
           }
         }
       }
@@ -471,7 +471,7 @@ MenuFunctions::MenuFunctions()
   }
 
   void ap_info_list_cb(lv_obj_t * btn, lv_event_t event) {
-    extern LinkedList<AccessPoint>* access_points;
+    extern std::vector<AccessPoint> access_points;
     extern MenuFunctions menu_function_obj;
     extern WiFiScan wifi_scan_obj;
   
@@ -481,8 +481,8 @@ MenuFunctions::MenuFunctions()
     // Exit function
     if (event == LV_EVENT_CLICKED) {
       if (btn_text != text09) {
-        for (int i = 0; i < access_points->size(); i++) {
-          if (access_points->get(i).essid == btn_text) {
+        for (int i = 0; i < access_points.size(); i++) {
+          if (access_points[i].essid == btn_text) {
             lv_obj_del_async(lv_obj_get_parent(lv_obj_get_parent(btn)));
   
             printf("LV_EVENT_CANCEL\n");
@@ -508,7 +508,7 @@ MenuFunctions::MenuFunctions()
   }
   
   void MenuFunctions::addSSIDGFX(){
-    extern LinkedList<ssid>* ssids;
+    extern std::vector<ssid> ssids;
     
     String display_string = "";
     // Create a keyboard and apply the styles
@@ -537,8 +537,8 @@ MenuFunctions::MenuFunctions()
     lv_textarea_set_placeholder_text(ta2, text_table1[1]);
   
     // After generating text areas, add text to first text box
-    for (int i = 0; i < ssids->size(); i++)
-      display_string.concat((String)ssids->get(i).essid + "\n");
+    for (int i = 0; i < ssids.size(); i++)
+      display_string.concat((String)ssids[i].essid + "\n");
       
     lv_textarea_set_text(ta1, display_string.c_str());
   
@@ -553,7 +553,7 @@ MenuFunctions::MenuFunctions()
     extern Display display_obj;
     extern MenuFunctions menu_function_obj;
     extern WiFiScan wifi_scan_obj;
-    extern LinkedList<ssid>* ssids;
+    extern std::vector<ssid> ssids;
     
     lv_keyboard_def_event_cb(kb, event);
   
@@ -570,8 +570,8 @@ MenuFunctions::MenuFunctions()
       wifi_scan_obj.addSSID(ta2_text);
   
       // Update large text box with ssid
-      for (int i = 0; i < ssids->size(); i++)
-        display_string.concat((String)ssids->get(i).essid + "\n");
+      for (int i = 0; i < ssids.size(); i++)
+        display_string.concat((String)ssids[i].essid + "\n");
       lv_textarea_set_text(ta1, display_string.c_str());
   
       lv_textarea_set_text(ta2, "");
@@ -653,7 +653,7 @@ MenuFunctions::MenuFunctions()
   void ta_event_cb(lv_obj_t * ta, lv_event_t event)
   {
     if(event == LV_EVENT_CLICKED) {
-      if(kb != NULL)
+      if(kb != 0)
         lv_keyboard_set_textarea(kb, ta);
     }
   
@@ -671,18 +671,18 @@ void MenuFunctions::buttonNotSelected(int b, int x) {
 
   #ifdef HAS_MINI_SCREEN
     display_obj.tft.setFreeFont(NULL);
-    display_obj.key[b].drawButton(false, current_menu->list->get(x).name);
+    display_obj.key[b].drawButton(false, current_menu.list[x].name);
   #endif
 
-  uint16_t color = this->getColor(current_menu->list->get(x).color);
+  uint16_t color = this->getColor(current_menu.list[x].color);
 
   #ifdef HAS_FULL_SCREEN
     display_obj.tft.setFreeFont(MENU_FONT);
-    display_obj.key[b].drawButton(false, current_menu->list->get(x).name);
-    if ((current_menu->list->get(x).name != text09) && (current_menu->list->get(x).icon != 255))
+    display_obj.key[b].drawButton(false, current_menu.list[x].name);
+    if ((current_menu.list[x].name != text09) && (current_menu.list[x].icon != 255))
           display_obj.tft.drawXBitmap(0,
                                       KEY_Y + (b * (KEY_H + KEY_SPACING_Y)) - (ICON_H / 2),
-                                      menu_icons[current_menu->list->get(x).icon],
+                                      menu_icons[current_menu.list[x].icon],
                                       ICON_W,
                                       ICON_H,
                                       TFT_BLACK,
@@ -698,20 +698,20 @@ void MenuFunctions::buttonSelected(int b, int x) {
   // Ensure b is within valid button index range
   b = (x - menu_start_index) % BUTTON_SCREEN_LIMIT;
 
-  uint16_t color = this->getColor(current_menu->list->get(x).color);
+  uint16_t color = this->getColor(current_menu.list[x].color);
 
   #ifdef HAS_MINI_SCREEN
     display_obj.tft.setFreeFont(NULL);
-    display_obj.key[b].drawButton(true, current_menu->list->get(x).name);
+    display_obj.key[b].drawButton(true, current_menu.list[x].name);
   #endif
 
   #ifdef HAS_FULL_SCREEN
     display_obj.tft.setFreeFont(MENU_FONT);
-    display_obj.key[b].drawButton(true, current_menu->list->get(x).name);
-    if ((current_menu->list->get(x).name != text09) && (current_menu->list->get(x).icon != 255))
+    display_obj.key[b].drawButton(true, current_menu.list[x].name);
+    if ((current_menu.list[x].name != text09) && (current_menu.list[x].icon != 255))
           display_obj.tft.drawXBitmap(0,
                                       KEY_Y + (b * (KEY_H + KEY_SPACING_Y)) - (ICON_H / 2),
-                                      menu_icons[current_menu->list->get(x).icon],
+                                      menu_icons[current_menu.list[x].icon],
                                       ICON_W,
                                       ICON_H,
                                       TFT_BLACK,
@@ -1045,26 +1045,26 @@ void MenuFunctions::main(uint32_t currentTime)
           if ((wifi_scan_obj.currentScanMode == WIFI_SCAN_OFF) ||
               (wifi_scan_obj.currentScanMode == WIFI_CONNECTED) ||
               (wifi_scan_obj.currentScanMode == OTA_UPDATE)) {
-            if (current_menu->selected > 0) {
-              current_menu->selected--;
+            if (current_menu.selected > 0) {
+              current_menu.selected--;
               // Page up
-              if (current_menu->selected < this->menu_start_index) {
-                this->buildButtons(current_menu, current_menu->selected);
-                this->displayCurrentMenu(current_menu->selected);
+              if (current_menu.selected < this->menu_start_index) {
+                this->buildButtons(current_menu, current_menu.selected);
+                this->displayCurrentMenu(current_menu.selected);
               }
-              this->buttonSelected(current_menu->selected - this->menu_start_index, current_menu->selected);
-              if (!current_menu->list->get(current_menu->selected + 1).selected)
-                this->buttonNotSelected(current_menu->selected + 1 - this->menu_start_index, current_menu->selected + 1);
+              this->buttonSelected(current_menu.selected - this->menu_start_index, current_menu.selected);
+              if (!current_menu.list[current_menu.selected + 1].selected)
+                this->buttonNotSelected(current_menu.selected + 1 - this->menu_start_index, current_menu.selected + 1);
             }
             // Loop to end
             else {
-              current_menu->selected = current_menu->list->size() - 1;
-              if (current_menu->selected >= BUTTON_SCREEN_LIMIT) {
-                this->buildButtons(current_menu, current_menu->selected + 1 - BUTTON_SCREEN_LIMIT);
-                this->displayCurrentMenu(current_menu->selected + 1 - BUTTON_SCREEN_LIMIT);
+              current_menu.selected = current_menu.list.size() - 1;
+              if (current_menu.selected >= BUTTON_SCREEN_LIMIT) {
+                this->buildButtons(current_menu, current_menu.selected + 1 - BUTTON_SCREEN_LIMIT);
+                this->displayCurrentMenu(current_menu.selected + 1 - BUTTON_SCREEN_LIMIT);
               }
-              this->buttonSelected(current_menu->selected, current_menu->selected);
-              if (!current_menu->list->get(0).selected)
+              this->buttonSelected(current_menu.selected, current_menu.selected);
+              if (!current_menu.list[0].selected)
                 this->buttonNotSelected(0, this->menu_start_index);
             }
           }
@@ -1084,31 +1084,31 @@ void MenuFunctions::main(uint32_t currentTime)
           if ((wifi_scan_obj.currentScanMode == WIFI_SCAN_OFF) ||
               (wifi_scan_obj.currentScanMode == WIFI_CONNECTED) ||
               (wifi_scan_obj.currentScanMode == OTA_UPDATE)) {
-            if (current_menu->selected < current_menu->list->size() - 1) {
-              current_menu->selected++;
+            if (current_menu.selected < current_menu.list.size() - 1) {
+              current_menu.selected++;
               // Page down
-              if (current_menu->selected - this->menu_start_index >= BUTTON_SCREEN_LIMIT) {
-                this->buildButtons(current_menu, current_menu->selected + 1 - BUTTON_SCREEN_LIMIT);
-                this->displayCurrentMenu(current_menu->selected + 1 - BUTTON_SCREEN_LIMIT);
+              if (current_menu.selected - this->menu_start_index >= BUTTON_SCREEN_LIMIT) {
+                this->buildButtons(current_menu, current_menu.selected + 1 - BUTTON_SCREEN_LIMIT);
+                this->displayCurrentMenu(current_menu.selected + 1 - BUTTON_SCREEN_LIMIT);
               }
               else
-                this->buttonSelected(current_menu->selected - this->menu_start_index, current_menu->selected);
-              if (!current_menu->list->get(current_menu->selected - 1).selected)
-                this->buttonNotSelected(current_menu->selected - 1 - this->menu_start_index, current_menu->selected - 1);
+                this->buttonSelected(current_menu.selected - this->menu_start_index, current_menu.selected);
+              if (!current_menu.list[current_menu.selected - 1].selected)
+                this->buttonNotSelected(current_menu.selected - 1 - this->menu_start_index, current_menu.selected - 1);
             }
             // Loop to beginning
             else {
-              if (current_menu->selected >= BUTTON_SCREEN_LIMIT) {
-                current_menu->selected = 0;
+              if (current_menu.selected >= BUTTON_SCREEN_LIMIT) {
+                current_menu.selected = 0;
                 this->buildButtons(current_menu);
                 this->displayCurrentMenu();
-                this->buttonSelected(current_menu->selected);
+                this->buttonSelected(current_menu.selected);
               }
               else {
-                current_menu->selected = 0;
-                this->buttonSelected(current_menu->selected);
-                if (!current_menu->list->get(current_menu->list->size() - 1).selected)
-                  this->buttonNotSelected(current_menu->list->size() - 1);
+                current_menu.selected = 0;
+                this->buttonSelected(current_menu.selected);
+                if (!current_menu.list[current_menu.list.size() - 1).selected)
+                  this->buttonNotSelected(current_menu.list.size() - 1);
               }
             }
           }
@@ -1125,7 +1125,7 @@ void MenuFunctions::main(uint32_t currentTime)
           }
         }
         if(menu_button == SELECT_BUTTON) {
-          current_menu->list->get(current_menu->selected).callable();
+          current_menu.list[current_menu.selected].callable();
         }
         else {
           if ((wifi_scan_obj.currentScanMode == WIFI_SCAN_OFF) ||
@@ -1135,37 +1135,37 @@ void MenuFunctions::main(uint32_t currentTime)
       }
   
       // Check if any key has changed state
-      /*for (uint8_t b = 0; b < current_menu->list->size(); b++) {
+      /*for (uint8_t b = 0; b < current_menu.list.size(); b++) {
         display_obj.tft.setFreeFont(MENU_FONT);
         if (display_obj.key[b].justPressed()) {
-          display_obj.key[b].drawButton(true, current_menu->list->get(b).name);
-          if (current_menu->list->get(b).name != text09)
+          display_obj.key[b].drawButton(true, current_menu.list[b].name);
+          if (current_menu.list[b].name != text09)
             display_obj.tft.drawXBitmap(0,
                                         KEY_Y + b * (KEY_H + KEY_SPACING_Y) - (ICON_H / 2),
-                                        menu_icons[current_menu->list->get(b).icon],
+                                        menu_icons[current_menu.list[b].icon],
                                         ICON_W,
                                         ICON_H,
-                                        this->getColor(current_menu->list->get(b).color),
+                                        this->getColor(current_menu.list[b].color),
                                         TFT_BLACK);
         }
   
         // If button was just release, execute the button's function
         if ((display_obj.key[b].justReleased()) && (!pressed))
         {
-          display_obj.key[b].drawButton(false, current_menu->list->get(b).name);
-          current_menu->list->get(b).callable();
+          display_obj.key[b].drawButton(false, current_menu.list[b].name);
+          current_menu.list[b].callable();
         }
         // This
         else if ((display_obj.key[b].justReleased()) && (pressed)) {
-          display_obj.key[b].drawButton(false, current_menu->list->get(b).name);
-          if (current_menu->list->get(b).name != text09)
+          display_obj.key[b].drawButton(false, current_menu.list[b].name);
+          if (current_menu.list[b].name != text09)
             display_obj.tft.drawXBitmap(0,
                                         KEY_Y + b * (KEY_H + KEY_SPACING_Y) - (ICON_H / 2),
-                                        menu_icons[current_menu->list->get(b).icon],
+                                        menu_icons[current_menu.list[b].icon],
                                         ICON_W,
                                         ICON_H,
                                         TFT_BLACK,
-                                        this->getColor(current_menu->list->get(b).color));
+                                        this->getColor(current_menu.list[b].color));
         }
   
         display_obj.tft.setFreeFont(NULL);
@@ -1189,26 +1189,26 @@ void MenuFunctions::main(uint32_t currentTime)
               if ((wifi_scan_obj.currentScanMode == WIFI_SCAN_OFF) ||
                   (wifi_scan_obj.currentScanMode == WIFI_CONNECTED) ||
                   (wifi_scan_obj.currentScanMode == OTA_UPDATE)) {
-                if (current_menu->selected > 0) {
-                  current_menu->selected--;
+                if (current_menu.selected > 0) {
+                  current_menu.selected--;
                   // Page up
-                  if (current_menu->selected < this->menu_start_index) {
-                    this->buildButtons(current_menu, current_menu->selected);
-                    this->displayCurrentMenu(current_menu->selected);
+                  if (current_menu.selected < this->menu_start_index) {
+                    this->buildButtons(current_menu, current_menu.selected);
+                    this->displayCurrentMenu(current_menu.selected);
                   }
-                  this->buttonSelected(current_menu->selected - this->menu_start_index, current_menu->selected);
-                  if (!current_menu->list->get(current_menu->selected + 1).selected)
-                    this->buttonNotSelected(current_menu->selected + 1 - this->menu_start_index, current_menu->selected + 1);
+                  this->buttonSelected(current_menu.selected - this->menu_start_index, current_menu.selected);
+                  if (!current_menu.list[current_menu.selected + 1].selected)
+                    this->buttonNotSelected(current_menu.selected + 1 - this->menu_start_index, current_menu.selected + 1);
                 }
                 // Loop to end
                 else {
-                  current_menu->selected = current_menu->list->size() - 1;
-                  if (current_menu->selected >= BUTTON_SCREEN_LIMIT) {
-                    this->buildButtons(current_menu, current_menu->selected + 1 - BUTTON_SCREEN_LIMIT);
-                    this->displayCurrentMenu(current_menu->selected + 1 - BUTTON_SCREEN_LIMIT);
+                  current_menu.selected = current_menu.list.size() - 1;
+                  if (current_menu.selected >= BUTTON_SCREEN_LIMIT) {
+                    this->buildButtons(current_menu, current_menu.selected + 1 - BUTTON_SCREEN_LIMIT);
+                    this->displayCurrentMenu(current_menu.selected + 1 - BUTTON_SCREEN_LIMIT);
                   }
-                  this->buttonSelected(current_menu->selected, current_menu->selected);
-                  if (!current_menu->list->get(0).selected)
+                  this->buttonSelected(current_menu.selected, current_menu.selected);
+                  if (!current_menu.list[0].selected)
                     this->buttonNotSelected(0, this->menu_start_index);
                 }
               }
@@ -1236,31 +1236,31 @@ void MenuFunctions::main(uint32_t currentTime)
         if ((wifi_scan_obj.currentScanMode == WIFI_SCAN_OFF) ||
             (wifi_scan_obj.currentScanMode == WIFI_CONNECTED) ||
             (wifi_scan_obj.currentScanMode == OTA_UPDATE)) {
-          if (current_menu->selected < current_menu->list->size() - 1) {
-            current_menu->selected++;
+          if (current_menu.selected < current_menu.list.size() - 1) {
+            current_menu.selected++;
             // Page down
-            if (current_menu->selected - this->menu_start_index >= BUTTON_SCREEN_LIMIT) {
-              this->buildButtons(current_menu, current_menu->selected + 1 - BUTTON_SCREEN_LIMIT);
-              this->displayCurrentMenu(current_menu->selected + 1 - BUTTON_SCREEN_LIMIT);
+            if (current_menu.selected - this->menu_start_index >= BUTTON_SCREEN_LIMIT) {
+              this->buildButtons(current_menu, current_menu.selected + 1 - BUTTON_SCREEN_LIMIT);
+              this->displayCurrentMenu(current_menu.selected + 1 - BUTTON_SCREEN_LIMIT);
             }
             else
-              this->buttonSelected(current_menu->selected - this->menu_start_index, current_menu->selected);
-            if (!current_menu->list->get(current_menu->selected - 1).selected)
-              this->buttonNotSelected(current_menu->selected - 1 - this->menu_start_index, current_menu->selected - 1);
+              this->buttonSelected(current_menu.selected - this->menu_start_index, current_menu.selected);
+            if (!current_menu.list[current_menu.selected - 1].selected)
+              this->buttonNotSelected(current_menu.selected - 1 - this->menu_start_index, current_menu.selected - 1);
           }
           // Loop to beginning
           else {
-            if (current_menu->selected >= BUTTON_SCREEN_LIMIT) {
-              current_menu->selected = 0;
+            if (current_menu.selected >= BUTTON_SCREEN_LIMIT) {
+              current_menu.selected = 0;
               this->buildButtons(current_menu);
               this->displayCurrentMenu();
-              this->buttonSelected(current_menu->selected);
+              this->buttonSelected(current_menu.selected);
             }
             else {
-              current_menu->selected = 0;
-              this->buttonSelected(current_menu->selected);
-              if (!current_menu->list->get(current_menu->list->size() - 1).selected)
-                this->buttonNotSelected(current_menu->list->size() - 1);
+              current_menu.selected = 0;
+              this->buttonSelected(current_menu.selected);
+              if (!current_menu.list[current_menu.list.size() - 1).selected)
+                this->buttonNotSelected(current_menu.list.size() - 1);
             }
           }
         }
@@ -1309,7 +1309,7 @@ void MenuFunctions::main(uint32_t currentTime)
       #endif
 
       if(c_btn_press){
-        current_menu->list->get(current_menu->selected).callable();
+        current_menu.list[current_menu.selected].callable();
       }
 
     #endif
@@ -1864,7 +1864,7 @@ void MenuFunctions::displaySetting(String key, Menu* menu, int index) {
   bool setting_value = settings_obj.loadSetting<bool>(key);
 
   // Make a local copy of menu node
-  MenuNode node = menu->list->get(index);
+  MenuNode node = menu.list[index];
 
   display_obj.tft.setTextWrap(false);
   display_obj.tft.setFreeFont(NULL);
@@ -1884,7 +1884,7 @@ void MenuFunctions::displaySetting(String key, Menu* menu, int index) {
   }
 
   // Put local copy back into menu
-  menu->list->set(index, node);
+  menu.list[index] = node;
     
 }
 
@@ -1905,12 +1905,12 @@ bool MenuFunctions::isKeyPressed(char c)
 // Function to build the menus
 void MenuFunctions::RunSetup()
 {
-  extern LinkedList<AccessPoint>* access_points;
-  extern LinkedList<Station>* stations;
-  extern LinkedList<AirTag>* airtags;
-  extern LinkedList<IPAddress>* ipList;
-  extern LinkedList<ProbeReqSsid>* probe_req_ssids;
-  extern LinkedList<ssid>* ssids;
+  extern std::vector<AccessPoint> access_points;
+  extern std::vector<Station> stations;
+  extern std::vector<AirTag> airtags;
+  extern std::vector<IPAddress> ipList;
+  extern std::vector<ProbeReqSsid> probe_req_ssids;
+  extern std::vector<ssid> ssids;
 
   this->disable_touch = false;
   
@@ -1923,84 +1923,84 @@ void MenuFunctions::RunSetup()
   #endif
    
   // root menu stuff
-  mainMenu.list = new LinkedList<MenuNode>(); // Get list in first menu ready
+  mainMenu.list = new std::vector<MenuNode>(); // Get list in first menu ready
 
   // Main menu stuff
-  wifiMenu.list = new LinkedList<MenuNode>(); // Get list in second menu ready
-  bluetoothMenu.list = new LinkedList<MenuNode>(); // Get list in third menu ready
-  deviceMenu.list = new LinkedList<MenuNode>();
+  wifiMenu.list = new std::vector<MenuNode>(); // Get list in second menu ready
+  bluetoothMenu.list = new std::vector<MenuNode>(); // Get list in third menu ready
+  deviceMenu.list = new std::vector<MenuNode>();
   #ifdef HAS_GPS
     if (gps_obj.getGpsModuleStatus()) {
-      gpsMenu.list = new LinkedList<MenuNode>();
-      gpsInfoMenu.list = new LinkedList<MenuNode>();
+      gpsMenu.list = new std::vector<MenuNode>();
+      gpsInfoMenu.list = new std::vector<MenuNode>();
     }
   #endif
 
   // Device menu stuff
-  failedUpdateMenu.list = new LinkedList<MenuNode>();
-  whichUpdateMenu.list = new LinkedList<MenuNode>();
-  confirmMenu.list = new LinkedList<MenuNode>();
-  updateMenu.list = new LinkedList<MenuNode>();
-  settingsMenu.list = new LinkedList<MenuNode>();
-  specSettingMenu.list = new LinkedList<MenuNode>();
-  infoMenu.list = new LinkedList<MenuNode>();
-  languageMenu.list = new LinkedList<MenuNode>();
+  failedUpdateMenu.list = new std::vector<MenuNode>();
+  whichUpdateMenu.list = new std::vector<MenuNode>();
+  confirmMenu.list = new std::vector<MenuNode>();
+  updateMenu.list = new std::vector<MenuNode>();
+  settingsMenu.list = new std::vector<MenuNode>();
+  specSettingMenu.list = new std::vector<MenuNode>();
+  infoMenu.list = new std::vector<MenuNode>();
+  languageMenu.list = new std::vector<MenuNode>();
 
   // WiFi menu stuff
-  wifiSnifferMenu.list = new LinkedList<MenuNode>();
-  wifiScannerMenu.list = new LinkedList<MenuNode>();
-  wifiAttackMenu.list = new LinkedList<MenuNode>();
+  wifiSnifferMenu.list = new std::vector<MenuNode>();
+  wifiScannerMenu.list = new std::vector<MenuNode>();
+  wifiAttackMenu.list = new std::vector<MenuNode>();
   #ifdef HAS_GPS
-    wardrivingMenu.list = new LinkedList<MenuNode>();
+    wardrivingMenu.list = new std::vector<MenuNode>();
   #endif
-  wifiGeneralMenu.list = new LinkedList<MenuNode>();
-  wifiAPMenu.list = new LinkedList<MenuNode>();
-  wifiIPMenu.list = new LinkedList<MenuNode>();
-  apInfoMenu.list = new LinkedList<MenuNode>();
-  setMacMenu.list = new LinkedList<MenuNode>();
-  genAPMacMenu.list = new LinkedList<MenuNode>();
+  wifiGeneralMenu.list = new std::vector<MenuNode>();
+  wifiAPMenu.list = new std::vector<MenuNode>();
+  wifiIPMenu.list = new std::vector<MenuNode>();
+  apInfoMenu.list = new std::vector<MenuNode>();
+  setMacMenu.list = new std::vector<MenuNode>();
+  genAPMacMenu.list = new std::vector<MenuNode>();
   #ifdef HAS_BT
-    airtagMenu.list = new LinkedList<MenuNode>();
+    airtagMenu.list = new std::vector<MenuNode>();
   #endif
   //#ifndef HAS_ILI9341
-    wifiStationMenu.list = new LinkedList<MenuNode>();
+    wifiStationMenu.list = new std::vector<MenuNode>();
   //#endif
-  selectProbeSSIDsMenu.list = new LinkedList<MenuNode>();
+  selectProbeSSIDsMenu.list = new std::vector<MenuNode>();
 
   // WiFi HTML menu stuff
-  htmlMenu.list = new LinkedList<MenuNode>();
+  htmlMenu.list = new std::vector<MenuNode>();
   //#if (!defined(HAS_ILI9341) && defined(HAS_BUTTONS))
-    miniKbMenu.list = new LinkedList<MenuNode>();
+    miniKbMenu.list = new std::vector<MenuNode>();
   //#endif
   //#ifndef HAS_ILI9341
   //  #ifdef HAS_BUTTONS
       #ifdef HAS_SD
-        sdDeleteMenu.list = new LinkedList<MenuNode>();
+        sdDeleteMenu.list = new std::vector<MenuNode>();
       #endif
   //  #endif
   //#endif
 
   // Bluetooth menu stuff
-  bluetoothSnifferMenu.list = new LinkedList<MenuNode>();
-  bluetoothAttackMenu.list = new LinkedList<MenuNode>();
+  bluetoothSnifferMenu.list = new std::vector<MenuNode>();
+  bluetoothAttackMenu.list = new std::vector<MenuNode>();
 
   // Settings stuff
-  generateSSIDsMenu.list = new LinkedList<MenuNode>();
-  clearSSIDsMenu.list = new LinkedList<MenuNode>();
-  clearAPsMenu.list = new LinkedList<MenuNode>();
-  saveFileMenu.list = new LinkedList<MenuNode>();
+  generateSSIDsMenu.list = new std::vector<MenuNode>();
+  clearSSIDsMenu.list = new std::vector<MenuNode>();
+  clearAPsMenu.list = new std::vector<MenuNode>();
+  saveFileMenu.list = new std::vector<MenuNode>();
 
-  saveSSIDsMenu.list = new LinkedList<MenuNode>();
-  loadSSIDsMenu.list = new LinkedList<MenuNode>();
-  saveAPsMenu.list = new LinkedList<MenuNode>();
-  loadAPsMenu.list = new LinkedList<MenuNode>();
-  saveATsMenu.list = new LinkedList<MenuNode>();
-  loadATsMenu.list = new LinkedList<MenuNode>();
+  saveSSIDsMenu.list = new std::vector<MenuNode>();
+  loadSSIDsMenu.list = new std::vector<MenuNode>();
+  saveAPsMenu.list = new std::vector<MenuNode>();
+  loadAPsMenu.list = new std::vector<MenuNode>();
+  saveATsMenu.list = new std::vector<MenuNode>();
+  loadATsMenu.list = new std::vector<MenuNode>();
 
-  evilPortalMenu.list = new LinkedList<MenuNode>();
-  ssidsMenu.list = new LinkedList<MenuNode>();
+  evilPortalMenu.list = new std::vector<MenuNode>();
+  ssidsMenu.list = new std::vector<MenuNode>();
 
-  gpsPOIMenu.list = new LinkedList<MenuNode>();
+  gpsPOIMenu.list = new std::vector<MenuNode>();
 
   // Work menu names
   mainMenu.name = text_table1[6];
@@ -2063,7 +2063,7 @@ void MenuFunctions::RunSetup()
   gpsPOIMenu.name = "GPS POI";
 
   // Build Main Menu
-  mainMenu.parentMenu = NULL;
+  mainMenu.parentMenu = 0;
   this->addNodes(&mainMenu, text_table1[7], TFTGREEN, NULL, WIFI, [this]() {
     this->changeMenu(&wifiMenu);
   });
@@ -2122,17 +2122,17 @@ void MenuFunctions::RunSetup()
   });
   this->addNodes(&wifiScannerMenu, "Port Scan All", TFTMAGENTA, NULL, BEACON_LIST, [this](){
     // Add the back button
-    wifiIPMenu.list->clear();
+    wifiIPMenu.list.clear();
       this->addNodes(&wifiIPMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
       this->changeMenu(wifiIPMenu.parentMenu);
     });
 
     // Populate the menu with buttons
-    for (int i = 0; i < ipList->size(); i++) {
+    for (int i = 0; i < ipList.size(); i++) {
       // This is the menu node
-      this->addNodes(&wifiIPMenu, ipList->get(i).toString(), TFTBLUE, NULL, 255, [this, i](){
-        Serial.println("Selected: " + ipList->get(i).toString());
-        wifi_scan_obj.current_scan_ip = ipList->get(i);
+      this->addNodes(&wifiIPMenu, ipList[i].toString(), TFTBLUE, NULL, 255, [this, i](){
+        Serial.println("Selected: " + ipList[i].toString());
+        wifi_scan_obj.current_scan_ip = ipList[i];
         display_obj.clearScreen();
         this->drawStatusBar();
         wifi_scan_obj.StartScan(WIFI_PORT_SCAN_ALL, TFT_BLUE);
@@ -2316,8 +2316,8 @@ void MenuFunctions::RunSetup()
   });*/
   this->addNodes(&wifiAttackMenu, "Evil Portal", TFTORANGE, NULL, BEACON_SNIFF, [this]() {
 
-    wifiAPMenu.list->clear();
-    ssidsMenu.list->clear();
+    wifiAPMenu.list.clear();
+    ssidsMenu.list.clear();
 
     wifiAPMenu.parentMenu = &evilPortalMenu;
     ssidsMenu.parentMenu = &evilPortalMenu;
@@ -2330,13 +2330,13 @@ void MenuFunctions::RunSetup()
     });
 
     // Get AP list ready
-    for (int i = 0; i < access_points->size(); i++) {
+    for (int i = 0; i < access_points.size(); i++) {
       // This is the menu node
-      this->addNodes(&wifiAPMenu, access_points->get(i).essid, TFTCYAN, NULL, 255, [this, i](){
-        if (evil_portal_obj.setAP(access_points->get(i).essid)) {
-          AccessPoint new_ap = access_points->get(i);
+      this->addNodes(&wifiAPMenu, access_points[i].essid, TFTCYAN, NULL, 255, [this, i](){
+        if (evil_portal_obj.setAP(access_points[i].essid)) {
+          AccessPoint new_ap = access_points[i];
           new_ap.selected = true;
-          access_points->set(i, new_ap);
+          access_points[i] = new_ap;
 
           evil_portal_obj.ap_index = i;
 
@@ -2350,10 +2350,10 @@ void MenuFunctions::RunSetup()
       });
     }
 
-    for (int i = 0; i < ssids->size(); i++) {
+    for (int i = 0; i < ssids.size(); i++) {
       // This is the menu node
-      this->addNodes(&ssidsMenu, ssids->get(i).essid, TFTCYAN, NULL, 255, [this, i](){
-        if (evil_portal_obj.setAP(ssids->get(i).essid)) {
+      this->addNodes(&ssidsMenu, ssids[i].essid, TFTCYAN, NULL, 255, [this, i](){
+        if (evil_portal_obj.setAP(ssids[i].essid)) {
           display_obj.clearScreen();
           this->drawStatusBar();
           wifi_scan_obj.StartScan(WIFI_SCAN_EVIL_PORTAL, TFT_ORANGE);
@@ -2383,16 +2383,16 @@ void MenuFunctions::RunSetup()
 
   this->addNodes(&wifiAttackMenu, "Karma", TFTORANGE, NULL, KEYBOARD_ICO, [this](){
     // Add the back button
-    selectProbeSSIDsMenu.list->clear();
+    selectProbeSSIDsMenu.list.clear();
     this->addNodes(&selectProbeSSIDsMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
       this->changeMenu(&wifiAttackMenu);
     });
 
     // Populate the menu with buttons
-    for (int i = 0; i < probe_req_ssids->size(); i++) {
+    for (int i = 0; i < probe_req_ssids.size(); i++) {
       // This is the menu node
-      this->addNodes(&selectProbeSSIDsMenu, probe_req_ssids->get(i).essid, TFTCYAN, NULL, 255, [this, i](){
-        if (evil_portal_obj.setAP(probe_req_ssids->get(i).essid)) {
+      this->addNodes(&selectProbeSSIDsMenu, probe_req_ssids[i].essid, TFTCYAN, NULL, 255, [this, i](){
+        if (evil_portal_obj.setAP(probe_req_ssids[i].essid)) {
           display_obj.clearScreen();
           this->drawStatusBar();
           wifi_scan_obj.StartScan(WIFI_SCAN_EVIL_PORTAL, TFT_ORANGE);
@@ -2449,7 +2449,7 @@ void MenuFunctions::RunSetup()
 
 	//Add Select probe ssid
   this->addNodes(&wifiGeneralMenu, text_table1[65], TFTCYAN, NULL, KEYBOARD_ICO, [this]() {
-    selectProbeSSIDsMenu.list->clear();
+    selectProbeSSIDsMenu.list.clear();
 
     // Add the back button
     this->addNodes(&selectProbeSSIDsMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
@@ -2459,16 +2459,16 @@ void MenuFunctions::RunSetup()
       // If so, then we should not add selected ssids to ssids list
 
       // Add selected ssid names to ssids list when clicking back button
-      if (probe_req_ssids->size() > 0) {
+      if (probe_req_ssids.size() > 0) {
 
         //TODO: TBD - Clear ssids list before adding new ones??
 
-        for (int i = 0; i < probe_req_ssids->size(); i++) {
-          ProbeReqSsid cur_probe_ssid = probe_req_ssids->get(i);
+        for (int i = 0; i < probe_req_ssids.size(); i++) {
+          ProbeReqSsid cur_probe_ssid = probe_req_ssids[i];
           if (cur_probe_ssid.selected) {
             bool ssidExists = false;
-            for (int i = 0; i < ssids->size(); i++) {
-              if (ssids->get(i).essid == cur_probe_ssid.essid) {
+            for (int i = 0; i < ssids.size(); i++) {
+              if (ssids[i].essid == cur_probe_ssid.essid) {
                 ssidExists = true;
                 break;
               }
@@ -2482,8 +2482,8 @@ void MenuFunctions::RunSetup()
     });
 
     // Populate the menu with buttons
-    for (int i = 0; i < probe_req_ssids->size(); i++) {
-      ProbeReqSsid cur_ssid = probe_req_ssids->get(i);
+    for (int i = 0; i < probe_req_ssids.size(); i++) {
+      ProbeReqSsid cur_ssid = probe_req_ssids[i];
       // This is the menu node
       this->addNodes(
         &selectProbeSSIDsMenu,
@@ -2492,17 +2492,17 @@ void MenuFunctions::RunSetup()
         NULL,
         255,
         [this, i]() {
-          ProbeReqSsid new_ssid = probe_req_ssids->get(i);
-          new_ssid.selected = !probe_req_ssids->get(i).selected;
+          ProbeReqSsid new_ssid = probe_req_ssids[i];
+          new_ssid.selected = !probe_req_ssids[i].selected;
 
           // Change selection status of menu node
-          MenuNode new_node = current_menu->list->get(i + 1);
-          new_node.selected = !current_menu->list->get(i + 1).selected;
-          current_menu->list->set(i + 1, new_node);
+          MenuNode new_node = current_menu.list[i + 1];
+          new_node.selected = !current_menu.list[i + 1].selected;
+          current_menu.list.set(i + 1, new_node);
 
-          probe_req_ssids->set(i, new_ssid);
+          probe_req_ssids[i] = new_ssid;
         },
-        probe_req_ssids->get(i).selected);
+        probe_req_ssids[i].selected);
     }
     this->changeMenu(&selectProbeSSIDsMenu);
   });
@@ -2561,17 +2561,17 @@ void MenuFunctions::RunSetup()
   //#else // Mini EP HTML select
     this->addNodes(&wifiGeneralMenu, "Select EP HTML File", TFTCYAN, NULL, KEYBOARD_ICO, [this](){
       // Add the back button
-      htmlMenu.list->clear();
+      htmlMenu.list.clear();
         this->addNodes(&htmlMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
         this->changeMenu(htmlMenu.parentMenu);
       });
 
       // Populate the menu with buttons
-      for (int i = 0; i < evil_portal_obj.html_files->size(); i++) {
+      for (int i = 0; i < evil_portal_obj.html_files.size(); i++) {
         // This is the menu node
-        this->addNodes(&htmlMenu, evil_portal_obj.html_files->get(i), TFTCYAN, NULL, 255, [this, i](){
+        this->addNodes(&htmlMenu, evil_portal_obj.html_files[i], TFTCYAN, NULL, 255, [this, i](){
           evil_portal_obj.selected_html_index = i;
-          evil_portal_obj.target_html_name = evil_portal_obj.html_files->get(evil_portal_obj.selected_html_index);
+          evil_portal_obj.target_html_name = evil_portal_obj.html_files[evil_portal_obj.selected_html_index];
           Serial.println("Set Evil Portal HTML as " + evil_portal_obj.target_html_name);
           evil_portal_obj.using_serial_html = false;
           this->changeMenu(htmlMenu.parentMenu);
@@ -2599,21 +2599,21 @@ void MenuFunctions::RunSetup()
     this->addNodes(&wifiGeneralMenu, "Select APs", TFTNAVY, NULL, KEYBOARD_ICO, [this](){
       wifiAPMenu.parentMenu = &wifiGeneralMenu;
       // Add the back button
-      wifiAPMenu.list->clear();
+      wifiAPMenu.list.clear();
         this->addNodes(&wifiAPMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
         this->changeMenu(wifiAPMenu.parentMenu);
       });
 
       this->addNodes(&wifiAPMenu, "Select ALL", TFTGREEN, NULL, 255, [this](){
 
-        for (int x = 0; x < access_points->size(); x++) {
-          AccessPoint new_ap = access_points->get(x);
-          new_ap.selected = !access_points->get(x).selected;
-          access_points->set(x, new_ap);
+        for (int x = 0; x < access_points.size(); x++) {
+          AccessPoint new_ap = access_points[x];
+          new_ap.selected = !access_points[x].selected;
+          access_points[x] = new_ap;
 
-          MenuNode new_node = current_menu->list->get(x + 2);
-          new_node.selected = !current_menu->list->get(x + 2).selected;
-          current_menu->list->set(x + 2, new_node);
+          MenuNode new_node = current_menu.list[x + 2];
+          new_node.selected = !current_menu.list[x + 2].selected;
+          current_menu.list.set(x + 2, new_node);
         }
 
         this->changeMenu(current_menu);
@@ -2621,34 +2621,34 @@ void MenuFunctions::RunSetup()
       });
 
       // Populate the menu with buttons
-      for (int i = 0; i < access_points->size(); i++) {
+      for (int i = 0; i < access_points.size(); i++) {
         // This is the menu node
-        this->addNodes(&wifiAPMenu, access_points->get(i).essid, TFTCYAN, NULL, 255, [this, i](){
-        AccessPoint new_ap = access_points->get(i);
-        new_ap.selected = !access_points->get(i).selected;
+        this->addNodes(&wifiAPMenu, access_points[i].essid, TFTCYAN, NULL, 255, [this, i](){
+        AccessPoint new_ap = access_points[i];
+        new_ap.selected = !access_points[i].selected;
 
         // Change selection status of menu node
-        MenuNode new_node = current_menu->list->get(i + 2);
-        new_node.selected = !current_menu->list->get(i + 2).selected;
-        current_menu->list->set(i + 2, new_node);
+        MenuNode new_node = current_menu.list[i + 2];
+        new_node.selected = !current_menu.list[i + 2].selected;
+        current_menu.list.set(i + 2, new_node);
 
-        access_points->set(i, new_ap);
-        }, access_points->get(i).selected);
+        access_points[i] = new_ap;
+        }, access_points[i].selected);
       }
       this->changeMenu(&wifiAPMenu);
     });
 
     this->addNodes(&wifiGeneralMenu, "View AP Info", TFTCYAN, NULL, KEYBOARD_ICO, [this](){
       // Add the back button
-      wifiAPMenu.list->clear();
+      wifiAPMenu.list.clear();
         this->addNodes(&wifiAPMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
         this->changeMenu(wifiAPMenu.parentMenu);
       });
 
       // Populate the menu with buttons
-      for (int i = 0; i < access_points->size(); i++) {
+      for (int i = 0; i < access_points.size(); i++) {
         // This is the menu node
-        this->addNodes(&wifiAPMenu, access_points->get(i).essid, TFTCYAN, NULL, 255, [this, i](){
+        this->addNodes(&wifiAPMenu, access_points[i].essid, TFTCYAN, NULL, 255, [this, i](){
           this->changeMenu(&apInfoMenu);
           wifi_scan_obj.RunAPInfo(i);
         });
@@ -2674,19 +2674,19 @@ void MenuFunctions::RunSetup()
 
     // Select Stations on Mini v2
     this->addNodes(&wifiGeneralMenu, "Select Stations", TFTCYAN, NULL, KEYBOARD_ICO, [this](){
-      wifiAPMenu.list->clear();
+      wifiAPMenu.list.clear();
         this->addNodes(&wifiAPMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
         this->changeMenu(wifiAPMenu.parentMenu);
       });
 
-      int menu_limit = access_points->size();
+      int menu_limit = access_points.size();
 
 
       for (int i = 0; i < menu_limit; i++) {
-        wifiStationMenu.list->clear();
-        this->addNodes(&wifiAPMenu, access_points->get(i).essid, TFTCYAN, NULL, 255, [this, i](){
+        wifiStationMenu.list.clear();
+        this->addNodes(&wifiAPMenu, access_points[i].essid, TFTCYAN, NULL, 255, [this, i](){
 
-          wifiStationMenu.list->clear();
+          wifiStationMenu.list.clear();
 
           // Add back button to the APs
           this->addNodes(&wifiStationMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
@@ -2695,17 +2695,17 @@ void MenuFunctions::RunSetup()
 
           this->addNodes(&wifiStationMenu, "Select ALL", TFTGREEN, NULL, 255, [this, i](){
 
-            for (int y = 0; y < access_points->get(i).stations->size(); y++) {
-              int cur_ap_sta_inx = access_points->get(i).stations->get(y);
-              Station new_sta = stations->get(cur_ap_sta_inx);
-              new_sta.selected = !stations->get(cur_ap_sta_inx).selected;
+            for (int y = 0; y < access_points[i].stations.size(); y++) {
+              int cur_ap_sta_inx = access_points[i].stations[y];
+              Station new_sta = stations[cur_ap_sta_inx];
+              new_sta.selected = !stations[cur_ap_sta_inx].selected;
 
               // Change selection status of menu node
-              MenuNode new_node = current_menu->list->get(y + 2);
-              new_node.selected = !current_menu->list->get(y + 2).selected;
-              current_menu->list->set(y + 2, new_node);
+              MenuNode new_node = current_menu.list[y + 2];
+              new_node.selected = !current_menu.list[y + 2].selected;
+              current_menu.list.set(y + 2, new_node);
 
-              stations->set(cur_ap_sta_inx, new_sta);
+              stations[cur_ap_sta_inx] = new_sta;
             }
 
             this->changeMenu(current_menu);
@@ -2713,20 +2713,20 @@ void MenuFunctions::RunSetup()
           });
 
           // Add the AP's stations to the specific AP menu
-          for (int x = 0; x < access_points->get(i).stations->size(); x++) {
-            int cur_ap_sta = access_points->get(i).stations->get(x);
+          for (int x = 0; x < access_points[i].stations.size(); x++) {
+            int cur_ap_sta = access_points[i].stations[x];
 
-            this->addNodes(&wifiStationMenu, macToString(stations->get(cur_ap_sta)), TFTCYAN, NULL, 255, [this, i, cur_ap_sta, x](){
-            Station new_sta = stations->get(cur_ap_sta);
-            new_sta.selected = !stations->get(cur_ap_sta).selected;
+            this->addNodes(&wifiStationMenu, macToString(stations[cur_ap_sta]), TFTCYAN, NULL, 255, [this, i, cur_ap_sta, x](){
+            Station new_sta = stations[cur_ap_sta];
+            new_sta.selected = !stations[cur_ap_sta].selected;
 
             // Change selection status of menu node
-            MenuNode new_node = current_menu->list->get(x + 2);
-            new_node.selected = !current_menu->list->get(x + 2).selected;
-            current_menu->list->set(x + 2, new_node);
+            MenuNode new_node = current_menu.list[x + 2];
+            new_node.selected = !current_menu.list[x + 2].selected;
+            current_menu.list.set(x + 2, new_node);
 
-            stations->set(cur_ap_sta, new_sta);
-            }, stations->get(cur_ap_sta).selected);
+            stations[cur_ap_sta] = new_sta;
+            }, stations[cur_ap_sta].selected);
           }
 
           // Final change menu to the menu of Stations
@@ -2739,24 +2739,24 @@ void MenuFunctions::RunSetup()
 
     this->addNodes(&wifiGeneralMenu, "Join WiFi", TFTWHITE, NULL, KEYBOARD_ICO, [this](){
       // Add the back button
-      wifiAPMenu.list->clear();
+      wifiAPMenu.list.clear();
         this->addNodes(&wifiAPMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
         this->changeMenu(wifiAPMenu.parentMenu);
       });
 
       // Populate the menu with buttons
-      for (int i = 0; i < access_points->size(); i++) {
+      for (int i = 0; i < access_points.size(); i++) {
         // This is the menu node
-        this->addNodes(&wifiAPMenu, access_points->get(i).essid, TFTCYAN, NULL, 255, [this, i](){
+        this->addNodes(&wifiAPMenu, access_points[i].essid, TFTCYAN, NULL, 255, [this, i](){
           // Join WiFi using mini keyboard
           #ifdef HAS_MINI_KB
             this->changeMenu(&miniKbMenu);
             String password = this->miniKeyboard(&miniKbMenu, true);
             if (password != "") {
-              Serial.println("Using SSID: " + (String)access_points->get(i).essid + " Password: " + (String)password);
+              Serial.println("Using SSID: " + (String)access_points[i].essid + " Password: " + (String)password);
               wifi_scan_obj.currentScanMode = LV_JOIN_WIFI;
               wifi_scan_obj.StartScan(LV_JOIN_WIFI, TFT_YELLOW); 
-              wifi_scan_obj.joinWiFi(access_points->get(i).essid, password);
+              wifi_scan_obj.joinWiFi(access_points[i].essid, password);
               this->changeMenu(current_menu);
             }
           #endif
@@ -2765,7 +2765,7 @@ void MenuFunctions::RunSetup()
           #ifdef HAS_TOUCH
             wifi_scan_obj.currentScanMode = LV_JOIN_WIFI;
             wifi_scan_obj.StartScan(LV_JOIN_WIFI, TFT_YELLOW); 
-            joinWiFiGFX(access_points->get(i).essid);
+            joinWiFiGFX(access_points[i].essid);
           #endif
         });
       }
@@ -2782,24 +2782,24 @@ void MenuFunctions::RunSetup()
       }
       else {
         // Add the back button
-        wifiAPMenu.list->clear();
+        wifiAPMenu.list.clear();
           this->addNodes(&wifiAPMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
           this->changeMenu(wifiAPMenu.parentMenu);
         });
 
         // Populate the menu with buttons
-        for (int i = 0; i < access_points->size(); i++) {
+        for (int i = 0; i < access_points.size(); i++) {
           // This is the menu node
-          this->addNodes(&wifiAPMenu, access_points->get(i).essid, TFTCYAN, NULL, 255, [this, i](){
+          this->addNodes(&wifiAPMenu, access_points[i].essid, TFTCYAN, NULL, 255, [this, i](){
             // Join WiFi using mini keyboard
             #ifdef HAS_MINI_KB
               this->changeMenu(&miniKbMenu);
               String password = this->miniKeyboard(&miniKbMenu, true);
               if (password != "") {
-                Serial.println("Using SSID: " + (String)access_points->get(i).essid + " Password: " + (String)password);
+                Serial.println("Using SSID: " + (String)access_points[i].essid + " Password: " + (String)password);
                 wifi_scan_obj.currentScanMode = LV_JOIN_WIFI;
                 wifi_scan_obj.StartScan(LV_JOIN_WIFI, TFT_YELLOW); 
-                wifi_scan_obj.joinWiFi(access_points->get(i).essid, password);
+                wifi_scan_obj.joinWiFi(access_points[i].essid, password);
                 this->changeMenu(current_menu);
               }
             #endif
@@ -2808,7 +2808,7 @@ void MenuFunctions::RunSetup()
             #ifdef HAS_TOUCH
               wifi_scan_obj.currentScanMode = LV_JOIN_WIFI;
               wifi_scan_obj.StartScan(LV_JOIN_WIFI, TFT_YELLOW); 
-              joinWiFiGFX(access_points->get(i).essid);
+              joinWiFiGFX(access_points[i].essid);
             #endif
           });
         }
@@ -2865,17 +2865,17 @@ void MenuFunctions::RunSetup()
   //#ifndef HAS_ILI9341
     this->addNodes(&setMacMenu, "Clone AP MAC", TFTRED, NULL, CLEAR_ICO, [this](){
       // Add the back button
-      wifiAPMenu.list->clear();
+      wifiAPMenu.list.clear();
         this->addNodes(&wifiAPMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
         this->changeMenu(wifiAPMenu.parentMenu);
       });
 
       // Populate the menu with buttons
-      for (int i = 0; i < access_points->size(); i++) {
+      for (int i = 0; i < access_points.size(); i++) {
         // This is the menu node
-        this->addNodes(&wifiAPMenu, access_points->get(i).essid, TFTLIME, NULL, 255, [this, i](){
+        this->addNodes(&wifiAPMenu, access_points[i].essid, TFTLIME, NULL, 255, [this, i](){
           this->changeMenu(&genAPMacMenu);
-          wifi_scan_obj.RunSetMac(access_points->get(i).bssid, true);
+          wifi_scan_obj.RunSetMac(access_points[i].bssid, true);
         });
       }
       this->changeMenu(&wifiAPMenu);
@@ -2883,17 +2883,17 @@ void MenuFunctions::RunSetup()
 
     this->addNodes(&setMacMenu, "Clone STA MAC", TFTMAGENTA, NULL, CLEAR_ICO, [this](){
       // Add the back button
-      wifiAPMenu.list->clear();
+      wifiAPMenu.list.clear();
         this->addNodes(&wifiAPMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
         this->changeMenu(wifiAPMenu.parentMenu);
       });
 
       // Populate the menu with buttons
-      for (int i = 0; i < stations->size(); i++) {
+      for (int i = 0; i < stations.size(); i++) {
         // This is the menu node
-        this->addNodes(&wifiAPMenu, macToString(stations->get(i).mac), TFTMAGENTA, NULL, 255, [this, i](){
+        this->addNodes(&wifiAPMenu, macToString(stations[i].mac), TFTMAGENTA, NULL, 255, [this, i](){
           this->changeMenu(&genAPMacMenu);
-          wifi_scan_obj.RunSetMac(stations->get(i).mac, false);
+          wifi_scan_obj.RunSetMac(stations[i].mac, false);
         });
       }
       this->changeMenu(&wifiAPMenu);
@@ -3030,7 +3030,7 @@ void MenuFunctions::RunSetup()
     // Select Airtag on Mini
       this->addNodes(&bluetoothAttackMenu, "Spoof Airtag", TFTWHITE, NULL, ATTACKS, [this](){
           // Clear nodes and add back button
-          airtagMenu.list->clear();
+          airtagMenu.list.clear();
           this->addNodes(&airtagMenu, text09, TFT_LIGHTGREY, NULL, 0, [this]() {
           this->changeMenu(airtagMenu.parentMenu);
         });
@@ -3038,25 +3038,25 @@ void MenuFunctions::RunSetup()
         // Add buttons for all airtags
         // Find out how big our menu is going to be
         int menu_limit;
-        if (airtags->size() <= BUTTON_ARRAY_LEN)
-          menu_limit = airtags->size();
+        if (airtags.size() <= BUTTON_ARRAY_LEN)
+          menu_limit = airtags.size();
         else
           menu_limit = BUTTON_ARRAY_LEN;
 
         // Create the menu nodes for all of the list items
         for (int i = 0; i < menu_limit; i++) {
-          this->addNodes(&airtagMenu, airtags->get(i).mac, TFTWHITE, NULL, BLUETOOTH, [this, i](){
-            AirTag new_at = airtags->get(i);
+          this->addNodes(&airtagMenu, airtags[i].mac, TFTWHITE, NULL, BLUETOOTH, [this, i](){
+            AirTag new_at = airtags[i];
             new_at.selected = true;
 
-            airtags->set(i, new_at);
+            airtags[i] = new_at;
 
             // Set all other airtags to "Not Selected"
-            for (int x = 0; x < airtags->size(); x++) {
+            for (int x = 0; x < airtags.size(); x++) {
               if (x != i) {
-                AirTag new_atx = airtags->get(x);
+                AirTag new_atx = airtags[x];
                 new_atx.selected = false;
-                airtags->set(x, new_atx);
+                airtags[x] = new_atx;
               }
             }
 
@@ -3123,18 +3123,18 @@ void MenuFunctions::RunSetup()
 
               while (deleting) {
                 // Build list of files
-                sd_obj.sd_files->clear();
+                sd_obj.sd_files.clear();
                 delete sd_obj.sd_files;
 
-                sd_obj.sd_files = new LinkedList<String>();
+                sd_obj.sd_files = new std::vector<String>();
 
-                sd_obj.sd_files->add("Back");
+                sd_obj.sd_files.push_back("Back");
 
                 sd_obj.listDirToLinkedList(sd_obj.sd_files);
 
                 int sd_file_index = 0;
 
-                this->sdDeleteMenu.list->set(0, MenuNode{sd_obj.sd_files->get(sd_file_index), false, TFTCYAN, 0, NULL, true, NULL});
+                this->sdDeleteMenu.list[0] = MenuNode{sd_obj.sd_files[sd_file_index], false, TFTCYAN, 0, NULL, true, NULL};
                 this->buildButtons(&sdDeleteMenu);
                 this->displayCurrentMenu();
 
@@ -3150,9 +3150,9 @@ void MenuFunctions::RunSetup()
                       if (sd_file_index > 0)
                         sd_file_index--;
                       else
-                        sd_file_index = sd_obj.sd_files->size() - 1;
+                        sd_file_index = sd_obj.sd_files.size() - 1;
 
-                      this->sdDeleteMenu.list->set(0, MenuNode{sd_obj.sd_files->get(sd_file_index), false, TFTCYAN, 0, NULL, true, NULL});
+                      this->sdDeleteMenu.list[0] = MenuNode{sd_obj.sd_files[sd_file_index], false, TFTCYAN, 0, NULL, true, NULL};
                       this->buildButtons(&sdDeleteMenu);
                       this->displayCurrentMenu();
                     }
@@ -3164,13 +3164,13 @@ void MenuFunctions::RunSetup()
                   #elif defined(MARAUDER_CARDPUTER)
                   if (this->isKeyPressed('.')){
                   #endif
-                    if (sd_file_index < sd_obj.sd_files->size() - 1)
+                    if (sd_file_index < sd_obj.sd_files.size() - 1)
                       sd_file_index++;
                     else
                       sd_file_index = 0;
 
-                    this->sdDeleteMenu.list->set(0, MenuNode{sd_obj.sd_files->get(sd_file_index), false, TFTCYAN, 0, NULL, true, NULL});
-                    this->buildButtons(&sdDeleteMenu, 0, sd_obj.sd_files->get(sd_file_index));
+                    this->sdDeleteMenu.list[0] = MenuNode{sd_obj.sd_files[sd_file_index], false, TFTCYAN, 0, NULL, true, NULL};
+                    this->buildButtons(&sdDeleteMenu, 0, sd_obj.sd_files[sd_file_index]);
                     this->displayCurrentMenu();
                   }
                   #endif
@@ -3179,13 +3179,13 @@ void MenuFunctions::RunSetup()
                   #elif defined(MARAUDER_CARDPUTER)
                     if (this->isKeyPressed('(')) {
                   #endif
-                    if (sd_obj.sd_files->get(sd_file_index) != "Back") {
-                      if (sd_obj.removeFile("/" + sd_obj.sd_files->get(sd_file_index)))
-                        Serial.println("Successfully Removed File: /" + sd_obj.sd_files->get(sd_file_index));
+                    if (sd_obj.sd_files[sd_file_index] != "Back") {
+                      if (sd_obj.removeFile("/" + sd_obj.sd_files[sd_file_index]))
+                        Serial.println("Successfully Removed File: /" + sd_obj.sd_files[sd_file_index]);
                         display_obj.tft.setTextWrap(false);
                         display_obj.tft.setCursor(0, SCREEN_HEIGHT / 3);
                         display_obj.tft.setTextColor(TFT_CYAN, TFT_BLACK);
-                        display_obj.tft.println("Deleting /" + sd_obj.sd_files->get(sd_file_index) + "...");
+                        display_obj.tft.println("Deleting /" + sd_obj.sd_files[sd_file_index] + "...");
                     }
                     else {
                       this->changeMenu(sdDeleteMenu.parentMenu);
@@ -3211,18 +3211,18 @@ void MenuFunctions::RunSetup()
 
             while (deleting) {
               // Build list of files
-              sd_obj.sd_files->clear();
+              sd_obj.sd_files.clear();
               delete sd_obj.sd_files;
 
-              sd_obj.sd_files = new LinkedList<String>();
+              sd_obj.sd_files = new std::vector<String>();
 
-              sd_obj.sd_files->add("Back");
+              sd_obj.sd_files.push_back("Back");
 
               sd_obj.listDirToLinkedList(sd_obj.sd_files);
 
               int sd_file_index = 0;
 
-              this->sdDeleteMenu.list->set(0, MenuNode{sd_obj.sd_files->get(sd_file_index), false, TFTCYAN, 0, NULL, true, NULL});
+              this->sdDeleteMenu.list[0] = MenuNode{sd_obj.sd_files[sd_file_index], false, TFTCYAN, 0, NULL, true, NULL};
               this->buildButtons(&sdDeleteMenu);
               this->displayCurrentMenu();
 
@@ -3240,31 +3240,31 @@ void MenuFunctions::RunSetup()
                     if (sd_file_index > 0)
                       sd_file_index--;
                     else
-                      sd_file_index = sd_obj.sd_files->size() - 1;
+                      sd_file_index = sd_obj.sd_files.size() - 1;
 
-                    this->sdDeleteMenu.list->set(0, MenuNode{sd_obj.sd_files->get(sd_file_index), false, TFTCYAN, 0, NULL, true, NULL});
+                    this->sdDeleteMenu.list[0] = MenuNode{sd_obj.sd_files[sd_file_index], false, TFTCYAN, 0, NULL, true, NULL};
                     this->buildButtons(&sdDeleteMenu);
                     this->displayCurrentMenu();
                   }
                 #endif
                 if (menu_button == DOWN_BUTTON) {
-                  if (sd_file_index < sd_obj.sd_files->size() - 1)
+                  if (sd_file_index < sd_obj.sd_files.size() - 1)
                     sd_file_index++;
                   else
                     sd_file_index = 0;
 
-                  this->sdDeleteMenu.list->set(0, MenuNode{sd_obj.sd_files->get(sd_file_index), false, TFTCYAN, 0, NULL, true, NULL});
-                  this->buildButtons(&sdDeleteMenu, 0, sd_obj.sd_files->get(sd_file_index));
+                  this->sdDeleteMenu.list[0] = MenuNode{sd_obj.sd_files[sd_file_index], false, TFTCYAN, 0, NULL, true, NULL};
+                  this->buildButtons(&sdDeleteMenu, 0, sd_obj.sd_files[sd_file_index]);
                   this->displayCurrentMenu();
                 }
                 if (menu_button == SELECT_BUTTON) {
-                  if (sd_obj.sd_files->get(sd_file_index) != "Back") {
-                    if (sd_obj.removeFile("/" + sd_obj.sd_files->get(sd_file_index)))
-                      Serial.println("Successfully Removed File: /" + sd_obj.sd_files->get(sd_file_index));
+                  if (sd_obj.sd_files[sd_file_index] != "Back") {
+                    if (sd_obj.removeFile("/" + sd_obj.sd_files[sd_file_index]))
+                      Serial.println("Successfully Removed File: /" + sd_obj.sd_files[sd_file_index]);
                       display_obj.tft.setTextWrap(false);
                       display_obj.tft.setCursor(0, SCREEN_HEIGHT / 3);
                       display_obj.tft.setTextColor(TFT_CYAN, TFT_BLACK);
-                      display_obj.tft.println("Deleting /" + sd_obj.sd_files->get(sd_file_index) + "...");
+                      display_obj.tft.println("Deleting /" + sd_obj.sd_files[sd_file_index] + "...");
                   }
                   else {
                     this->changeMenu(sdDeleteMenu.parentMenu);
@@ -3500,7 +3500,7 @@ void MenuFunctions::RunSetup()
 //#if (!defined(HAS_ILI9341) && defined(HAS_BUTTONS))
   String MenuFunctions::miniKeyboard(Menu * targetMenu, bool do_pass) {
     // Prepare a char array and reset temp SSID string
-    extern LinkedList<ssid>* ssids;
+    extern std::vector<ssid> ssids;
 
     String ret_val = "";
 
@@ -3541,7 +3541,7 @@ void MenuFunctions::RunSetup()
                 else
                   this->mini_kb_index = str_len - 2;
 
-                targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+                targetMenu.list[0] = MenuNode{String(char_array[this->mini_kb_index].c_str(), false, TFTCYAN, 0, NULL, true, NULL});
                 this->buildButtons(targetMenu);
 
                 while (!l_btn.justReleased()) {
@@ -3563,7 +3563,7 @@ void MenuFunctions::RunSetup()
                 else
                   this->mini_kb_index = 0;
 
-                targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+                targetMenu.list[0] = MenuNode{String(char_array[this->mini_kb_index].c_str(), false, TFTCYAN, 0, NULL, true, NULL});
                 this->buildButtons(targetMenu, 0, String(char_array[this->mini_kb_index]).c_str());
                 
                 while (!r_btn.justReleased()) {
@@ -3619,7 +3619,7 @@ void MenuFunctions::RunSetup()
                   else
                     this->mini_kb_index = 0;
 
-                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+                  targetMenu.list[0] = MenuNode{String(char_array[this->mini_kb_index].c_str(), false, TFTCYAN, 0, NULL, true, NULL});
                   this->buildButtons(targetMenu, 0, String(char_array[this->mini_kb_index]).c_str());
                 }
               }
@@ -3646,7 +3646,7 @@ void MenuFunctions::RunSetup()
                   else
                     this->mini_kb_index = str_len - 2;
 
-                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+                  targetMenu.list[0] = MenuNode{String(char_array[this->mini_kb_index].c_str(), false, TFTCYAN, 0, NULL, true, NULL});
                   this->buildButtons(targetMenu);
                 }
               }
@@ -3660,7 +3660,7 @@ void MenuFunctions::RunSetup()
 
                   // Exit
                   if (c_btn.isHeld()) {
-                    this->changeMenu(targetMenu->parentMenu);
+                    this->changeMenu(targetMenu.parentMenu);
                     return wifi_scan_obj.current_mini_kb_ssid;
                   }
                   delay(1);
@@ -3671,7 +3671,7 @@ void MenuFunctions::RunSetup()
                   if (wifi_scan_obj.current_mini_kb_ssid != "") {
                     pressed = true;
                     ssid s = {wifi_scan_obj.current_mini_kb_ssid, random(1, 12), {random(256), random(256), random(256), random(256), random(256), random(256)}, false};
-                    ssids->unshift(s);
+                    ssids.unshift(s);
                     wifi_scan_obj.current_mini_kb_ssid = "";
                   }
                 }
@@ -3696,7 +3696,7 @@ void MenuFunctions::RunSetup()
 
             if (!do_pass) {
               if (this->isKeyPressed('`')) {
-                this->changeMenu(targetMenu->parentMenu);
+                this->changeMenu(targetMenu.parentMenu);
                 return wifi_scan_obj.current_mini_kb_ssid;
               }
 
@@ -3705,7 +3705,7 @@ void MenuFunctions::RunSetup()
                   if (wifi_scan_obj.current_mini_kb_ssid != "") {
                     pressed = true;
                     ssid s = {wifi_scan_obj.current_mini_kb_ssid, random(1, 12), {random(256), random(256), random(256), random(256), random(256), random(256)}, false};
-                    ssids->unshift(s);
+                    ssids.unshift(s);
                     wifi_scan_obj.current_mini_kb_ssid = "";
                   }
                 }
@@ -3713,12 +3713,12 @@ void MenuFunctions::RunSetup()
             }
             else {
               if (this->isKeyPressed('(')) {
-                this->changeMenu(targetMenu->parentMenu);
+                this->changeMenu(targetMenu.parentMenu);
                 return wifi_scan_obj.current_mini_kb_ssid;
               }
 
               if (this->isKeyPressed('`')) {
-                this->changeMenu(targetMenu->parentMenu);
+                this->changeMenu(targetMenu.parentMenu);
                 return "";
               }
             }
@@ -3739,7 +3739,7 @@ void MenuFunctions::RunSetup()
               else
                 this->mini_kb_index = str_len - 2;
 
-              targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+              targetMenu.list[0] = MenuNode{String(char_array[this->mini_kb_index].c_str(), false, TFTCYAN, 0, NULL, true, NULL});
               this->buildButtons(targetMenu);
               while (display_obj.updateTouch(&t_x, &t_y) > 0)
                 delay(1);
@@ -3754,7 +3754,7 @@ void MenuFunctions::RunSetup()
               else
                 this->mini_kb_index = 0;
 
-              targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+              targetMenu.list[0] = MenuNode{String(char_array[this->mini_kb_index].c_str(), false, TFTCYAN, 0, NULL, true, NULL});
               this->buildButtons(targetMenu, 0, String(char_array[this->mini_kb_index]).c_str());
               while (display_obj.updateTouch(&t_x, &t_y) > 0)
                 delay(1);
@@ -3801,7 +3801,7 @@ void MenuFunctions::RunSetup()
                   else
                     this->mini_kb_index = 0;
 
-                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+                  targetMenu.list[0] = MenuNode{String(char_array[this->mini_kb_index].c_str(), false, TFTCYAN, 0, NULL, true, NULL});
                   this->buildButtons(targetMenu, 0, String(char_array[this->mini_kb_index]).c_str());
                 }
               }
@@ -3828,7 +3828,7 @@ void MenuFunctions::RunSetup()
                   else
                     this->mini_kb_index = str_len - 2;
 
-                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+                  targetMenu.list[0] = MenuNode{String(char_array[this->mini_kb_index].c_str(), false, TFTCYAN, 0, NULL, true, NULL});
                   this->buildButtons(targetMenu);
                 }
               }
@@ -3842,7 +3842,7 @@ void MenuFunctions::RunSetup()
 
               // Reset the touch keys so we don't activate the keys when we go back
               display_obj.menuButton(&t_x, &t_y, display_obj.updateTouch(&t_x, &t_y));
-              this->changeMenu(targetMenu->parentMenu);
+              this->changeMenu(targetMenu.parentMenu);
               return wifi_scan_obj.current_mini_kb_ssid;
             }
 
@@ -3863,7 +3863,7 @@ void MenuFunctions::RunSetup()
             display_obj.tft.println(wifi_scan_obj.current_mini_kb_ssid + "\n");
             display_obj.tft.setTextColor(TFT_GREEN, TFT_BLACK);
 
-            display_obj.tft.println(ssids->get(0).essid);
+            display_obj.tft.println(ssids[0].essid);
 
             display_obj.tft.setTextColor(TFT_ORANGE, TFT_BLACK);
             #ifdef HAS_MINI_KB
@@ -3907,13 +3907,13 @@ void MenuFunctions::RunSetup()
 void MenuFunctions::showMenuList(Menu * menu, int layer)
 {
   // Iterate through all of the menu nodes in the menu
-  for (uint8_t i = 0; i < menu->list->size(); i++)
+  for (uint8_t i = 0; i < menu.list.size(); i++)
   {
     // Depending on layer, indent
     for (uint8_t x = 0; x < layer * 4; x++)
       Serial.print(" ");
     Serial.print("Node: ");
-    Serial.println(menu->list->get(i).name);
+    Serial.println(menu.list[i].name);
   }
   Serial.println();
 }
@@ -3923,15 +3923,15 @@ void MenuFunctions::showMenuList(Menu * menu, int layer)
 /*void MenuFunctions::addNodes(Menu * menu, String name, uint16_t color, Menu * child, int place, std::function<void()> callable, bool selected, String command)
 {
   TFT_eSPI_Button new_button;
-  menu->list->add(MenuNode{name, false, color, place, &new_button, selected, callable});
-  //menu->list->add(MenuNode{name, false, color, place, selected, callable});
+  menu.list.push_back(MenuNode{name, false, color, place, &new_button, selected, callable});
+  //menu.list.push_back(MenuNode{name, false, color, place, selected, callable});
 }*/
 
 void MenuFunctions::addNodes(Menu * menu, String name, uint8_t color, Menu * child, int place, std::function<void()> callable, bool selected, String command)
 {
   TFT_eSPI_Button new_button;
-  menu->list->add(MenuNode{name, false, color, place, &new_button, selected, callable});
-  //menu->list->add(MenuNode{name, false, color, place, selected, callable});
+  menu.list.push_back(MenuNode{name, false, color, place, &new_button, selected, callable});
+  //menu.list.push_back(MenuNode{name, false, color, place, selected, callable});
 }
 
 void MenuFunctions::setGraphScale(float scale) {
@@ -4052,7 +4052,7 @@ void MenuFunctions::changeMenu(Menu * menu)
   display_obj.tft.init();
   current_menu = menu;
 
-  current_menu->selected = 0;
+  current_menu.selected = 0;
 
   buildButtons(menu);
 
@@ -4060,27 +4060,27 @@ void MenuFunctions::changeMenu(Menu * menu)
 }
 
 void MenuFunctions::buildButtons(Menu *menu, int starting_index, String button_name) {
-  if (menu->list == NULL || menu->list->size() == 0)
+  if (menu.list == 0 || menu.list.size() == 0)
       return;
 
   // Ensure starting index is within bounds
-  if (starting_index >= menu->list->size())
-    starting_index = menu->list->size() - BUTTON_SCREEN_LIMIT;
+  if (starting_index >= menu.list.size())
+    starting_index = menu.list.size() - BUTTON_SCREEN_LIMIT;
   if (starting_index < 0)
     starting_index = 0;
 
   this->menu_start_index = starting_index;
 
   // Determine the number of buttons to display (limited to screen capacity)
-  uint8_t visible_buttons = min(BUTTON_SCREEN_LIMIT, menu->list->size() - starting_index);
+  uint8_t visible_buttons = min(BUTTON_SCREEN_LIMIT, menu.list.size() - starting_index);
 
   // Loop through and create only the visible buttons
   for (uint8_t i = 0; i < visible_buttons; i++) {
-    uint16_t color = this->getColor(menu->list->get(starting_index + i).color);
+    uint16_t color = this->getColor(menu.list[starting_index + i].color);
     
-    char buf[menu->list->get(starting_index + i).name.length() + 1] = {};
+    char buf[menu.list[starting_index + i].name.length() + 1] = {};
     if (button_name != "")
-      menu->list->get(starting_index + i).name.toCharArray(buf, menu->list->get(starting_index + i).name.length() + 1);
+      menu.list[starting_index + i].name.toCharArray(buf, menu.list[starting_index + i].name.length() + 1);
     else
       button_name.toCharArray(buf, button_name.length() + 1);
 
@@ -4128,11 +4128,11 @@ void MenuFunctions::displayCurrentMenu(int start_index)
 {
   //Serial.println(F("Displaying current menu..."));
   display_obj.clearScreen();
-  display_obj.updateBanner(current_menu->name);
+  display_obj.updateBanner(current_menu.name);
   display_obj.tft.setTextColor(TFT_LIGHTGREY, TFT_DARKGREY);
   this->drawStatusBar();
 
-  if (current_menu->list != NULL)
+  if (current_menu.list != 0)
   {
     #ifdef HAS_FULL_SCREEN
       display_obj.tft.setFreeFont(MENU_FONT);
@@ -4150,27 +4150,27 @@ void MenuFunctions::displayCurrentMenu(int start_index)
       }
     #endif*/
 
-    for (uint16_t i = start_index; i < min(start_index + BUTTON_SCREEN_LIMIT, current_menu->list->size()); i++)
+    for (uint16_t i = start_index; i < min(start_index + BUTTON_SCREEN_LIMIT, current_menu.list.size()); i++)
     {
-      if (!current_menu || !current_menu->list || i >= current_menu->list->size())
+      if (!current_menu || !current_menu.list || i >= current_menu.list.size())
         continue;
-      uint16_t color = this->getColor(current_menu->list->get(i).color);
+      uint16_t color = this->getColor(current_menu.list[i].color);
       #ifdef HAS_FULL_SCREEN
         //#ifndef HAS_ILI9341
-          if ((current_menu->list->get(i).selected) || (current_menu->selected == i)) {
-            display_obj.key[i - start_index].drawButton(true, current_menu->list->get(i).name);
+          if ((current_menu.list[i].selected) || (current_menu.selected == i)) {
+            display_obj.key[i - start_index].drawButton(true, current_menu.list[i].name);
           }
           else {
-            display_obj.key[i - start_index].drawButton(false, current_menu->list->get(i).name);          
+            display_obj.key[i - start_index].drawButton(false, current_menu.list[i].name);          
           }
         //#else
-        //  display_obj.key[i].drawButton(false, current_menu->list->get(i).name); 
+        //  display_obj.key[i].drawButton(false, current_menu.list[i].name); 
         //#endif
         
-        if ((current_menu->list->get(i).name != text09) && (current_menu->list->get(i).icon != 255))
+        if ((current_menu.list[i].name != text09) && (current_menu.list[i].icon != 255))
           display_obj.tft.drawXBitmap(0,
                                       KEY_Y + (i - start_index) * (KEY_H + KEY_SPACING_Y) - (ICON_H / 2),
-                                      menu_icons[current_menu->list->get(i).icon],
+                                      menu_icons[current_menu.list[i].icon],
                                       ICON_W,
                                       ICON_H,
                                       TFT_BLACK,
@@ -4179,10 +4179,10 @@ void MenuFunctions::displayCurrentMenu(int start_index)
       #endif
 
       #ifdef HAS_MINI_SCREEN
-        if ((current_menu->selected == i) || (current_menu->list->get(i).selected))
-          display_obj.key[i - start_index].drawButton(true, current_menu->list->get(i).name);
+        if ((current_menu.selected == i) || (current_menu.list[i].selected))
+          display_obj.key[i - start_index].drawButton(true, current_menu.list[i].name);
         else 
-          display_obj.key[i - start_index].drawButton(false, current_menu->list->get(i).name);
+          display_obj.key[i - start_index].drawButton(false, current_menu.list[i].name);
       #endif
     }
     display_obj.tft.setFreeFont(NULL);
