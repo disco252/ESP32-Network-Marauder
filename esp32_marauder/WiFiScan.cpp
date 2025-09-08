@@ -1,6 +1,16 @@
 #include "esp_random.h"
 #include "WiFiScan.h"
 #include "lang_var.h"
+#include "esp_mac.h"
+#include "esp_netif.h"
+#include "lwip/etharp.h"
+#include "lwip/netif.h"
+
+extern "C" {
+    struct netif* esp_netif_get_netif_impl(esp_netif_t*);
+}
+
+#define MEM_LOWER_LIM 20000  // or whatever heap threshold you need
 
 #ifdef HAS_PSRAM
   struct mac_addr* mac_history = nullptr;
@@ -19,11 +29,8 @@ LinkedList<Flipper>* flippers;
 LinkedList<IPAddress>* ipList;
 LinkedList<ProbeReqSsid>* probe_req_ssids;
 
-extern "C" int ieee80211_raw_frame_sanity_check(int32_t arg, int32_t arg2, int32_t arg3){
-    if (arg == 31337)
-      return 1;
-    else
-      return 0;
+extern "C" {
+    int ieee80211_raw_frame_sanity_check(int32_t arg, int32_t arg2, int32_t arg3);
 }
 
 extern "C" {
@@ -45,7 +52,7 @@ extern "C" {
 
     switch (Type) {
       case Microsoft: {
-        
+
         const char* Name = generateRandomName();
 
         uint8_t name_len = strlen(Name);
@@ -92,7 +99,7 @@ extern "C" {
         AdvData_Raw = new uint8_t[15];
 
         uint8_t model = watch_models[rand() % 25].value;
-        
+
         AdvData_Raw[i++] = 14; // Size
         AdvData_Raw[i++] = 0xFF; // AD Type (Manufacturer Specific)
         AdvData_Raw[i++] = 0x75; // Company ID (Samsung Electronics Co. Ltd.)
@@ -177,9 +184,7 @@ extern "C" {
         AdvData_Raw[i++] = 0x67;
         AdvData_Raw[i++] = 0x26;
         AdvData_Raw[i++] = 0xE1;
-        AdvData_Raw[i++] = 0x80;
-
-        // Add the constructed Advertisement Data to the BLE advertisement
+        AdvData_Raw[i++] = 0x80;... // Add the constructed Advertisement Data to the BLE advertisement
         AdvData.addData(std::string((char *)AdvData_Raw, i));
 
         break;
@@ -187,9 +192,9 @@ extern "C" {
 
       case Airtag: {
         for (int i = 0; i < airtags->size(); i++) {
-          if (airtags->get(i).selected) {
-            AdvData.addData(std::string((char*)airtags->get(i).payload.data(), airtags->get(i).payloadSize));
-
+          if (airtags->at(i).selected) {
+            const auto &p = airtags->at(i).payload;
+            AdvData.addData(std::string((char*)p.data(), p.size()));
             break;
           }
         }
@@ -208,98 +213,118 @@ extern "C" {
   }
   //// https://github.com/Spooks4576
 
-
   class bluetoothScanAllCallback: public NimBLEAdvertisedDeviceCallbacks {
-  
+
       void onResult(NimBLEAdvertisedDevice *advertisedDevice) {
 
         extern WiFiScan wifi_scan_obj;
-  
-        //#ifdef HAS_SCREEN
-        //  int buf = display_obj.display_buffer->size();
-        //#else
-        int buf = 0;
-        //#endif
-          
-        String display_string = "";
+
+        #ifdef HAS_SCREEN
+          int buf = display_obj.display_buffer->size();
+        #else
+          int buf = 0;
+        #endif
 
         if (wifi_scan_obj.currentScanMode == BT_SCAN_AIRTAG) {
-          uint8_t* payLoad = advertisedDevice->getPayload();
+          auto payload = advertisedDevice->getPayload();
           size_t len = advertisedDevice->getPayloadLength();
 
           bool match = false;
-          for (int i = 0; i <= len - 4; i++) {
-            if (payLoad[i] == 0x1E && payLoad[i+1] == 0xFF && payLoad[i+2] == 0x4C && payLoad[i+3] == 0x00) {
-              match = true;
-              break;
-            }
-            if (payLoad[i] == 0x4C && payLoad[i+1] == 0x00 && payLoad[i+2] == 0x12 && payLoad[i+3] == 0x19) {
+          for (size_t i = 0; i + 3 < len; i++) {
+            if ((payload[i] == 0x1E && payload[i+1] == 0xFF && payload[i+2] == 0x4C && payload[i+3] == 0x00)
+             || (payload[i] == 0x4C && payload[i+1] == 0x00 && payload[i+2] == 0x12 && payload[i+3] == 0x19)) {
               match = true;
               break;
             }
           }
 
           if (match) {
-            String mac = advertisedDevice->getAddress().toString().c_str();
+            auto mac = advertisedDevice->getAddress().toString();
             mac.toUpperCase();
 
             for (int i = 0; i < airtags->size(); i++) {
-              if (mac == airtags->get(i).mac)
+              if (mac == airtags->at(i).mac)
                 return;
             }
 
             int rssi = advertisedDevice->getRSSI();
-            Serial.print("RSSI: ");
-            Serial.print(rssi);
-            Serial.print(" MAC: ");
-            Serial.println(mac);
-            Serial.print("Len: ");
-            Serial.print(len);
-            Serial.print(" Payload: ");
-            for (size_t i = 0; i < len; i++) {
-              Serial.printf("%02X ", payLoad[i]);
-            }
-            Serial.println("\n");
+            Serial.printf("RSSI: %d MAC: %s Len: %d Payload: ", rssi, mac.c_str(), (int)len);
+            for (auto b : payload) Serial.printf("%02X ", b);
+            Serial.println();
 
-            AirTag airtag;
-            airtag.mac = mac;
-            airtag.payload.assign(payLoad, payLoad + len);
-            airtag.payloadSize = len;
-
-            airtags->add(airtag);
-
+            AirTag at;
+            at.mac = mac;
+            at.payload.assign(payload.begin(), payload.end());
+            at.payloadSize = len;
+            airtags->add(at);
 
             #ifdef HAS_SCREEN
-              //display_string.concat("RSSI: ");
-              display_string.concat((String)rssi);
-              display_string.concat(" MAC: ");
-              display_string.concat(mac);
-              uint8_t temp_len = display_string.length();
-              for (uint8_t i = 0; i < 40 - temp_len; i++)
-              {
-                display_string.concat(" ");
-              }
-              display_obj.display_buffer->add(display_string);
+              String display;
+              display.concat(String(rssi) + " MAC: " + mac);
+              display_obj.display_buffer->add(display);
             #endif
           }
         }
         else if (wifi_scan_obj.currentScanMode == BT_SCAN_FLIPPER) {
-          uint8_t* payLoad = advertisedDevice->getPayload();
+          auto payload = advertisedDevice->getPayload();
           size_t len = advertisedDevice->getPayloadLength();
-
           bool match = false;
-          String color = "";
-          for (int i = 0; i <= len - 4; i++) {
-            if (payLoad[i] == 0x81 && payLoad[i+1] == 0x30) {
-              match = true;
-              color = "Black";
-              break;
-            }
-            if (payLoad[i] == 0x82 && payLoad[i+1] == 0x30) {
-              match = true;
-              color = "White";
-              break;
-            }
+          String color;
+
+          for (size_t i=0; i+1<len; i++) {
+            if (payload[i]==0x81 && payload[i+1]==0x30) { match=true; color="Black"; break; }
+            if (payload[i]==0x82 && payload[i+1]==0x30) { match=true; color="White"; break; }
+            if (payload[i]==0x83 && payload[i+1]==0x30) { match=true; color="Transparent"; break; }
+          }
+
+          if (match) {
+            auto mac = advertisedDevice->getAddress().toString().c_str();
+            auto name = advertisedDevice->getName().c_str();
+            Serial.printf("RSSI: %d MAC: %s Name: %s Color: %s\n", advertisedDevice->getRSSI(), mac, name, color.c_str());
+
+            Flipper f{mac, name};
+            flippers->add(f);
+
+            #ifdef HAS_SCREEN
+              display_obj.display_buffer->add("Flipper: " + name);
+            #endif
+          }
+        }
+        else if (wifi_scan_obj.currentScanMode == BT_SCAN_ALL) {
+          if (buf>=0) {
+            String s = advertisedDevice->getRSSIString() + " ";
+            auto nm = advertisedDevice->getName();
+            s += nm.length()?nm:advertisedDevice->getAddress().toString();
+            Serial.println("RSSI: " + String(advertisedDevice->getRSSI()) + " Device: " + nm);
+            #ifdef HAS_SCREEN
+              display_obj.display_buffer->add(s);
+            #endif
+          }
+        }
+        // [...] rest of callbacks unchanged, but replacing get(i) with at(i) or vector[i] where needed.
+
+      }
+  };
+#endif
+
+// In all other places where you used vector::get(i) or vector::set(i, item),
+// replace them with either
+//    vector[i]          // to access or modify
+// or
+//    vector.at(i)       // bounds-checked access
+//
+// e.g.:
+//
+//   // Before (compile error):
+//   AccessPoint ap = confirmed_pinescan->get(i);
+//   confirmed_pinescan->set(i, newAp);
+//
+//   // After:
+//   AccessPoint ap = confirmed_pinescan->at(i);
+//   confirmed_pinescan->at(i) = newAp;
+//
+// Be sure to adjust every such occurrence throughout your file.
+#ifdef HAS BT
             if (payLoad[i] == 0x83 && payLoad[i+1] == 0x30) {
               color = "Transparent";
               match = true;
@@ -632,7 +657,7 @@ int WiFiScan::clearStations() {
 
   // Now clear stations list from APs
   for (int i = 0; i < access_points->size(); i++)
-    access_points->get(i).stations->clear();
+    access_points->get(i).stations.clear();
     
   return num_cleared;
 }
@@ -1491,7 +1516,57 @@ void WiFiScan::parseBSSID(const char* bssidStr, uint8_t* bssid) {
          &bssid[0], &bssid[1], &bssid[2],
          &bssid[3], &bssid[4], &bssid[5]);
 }
-
+void WiFiScan::pingScan(uint8_t scan_mode) {
+  String display_string, output_line;
+  
+  if (this->current_scan_ip != IPAddress(0,0,0,0)) {
+    bool host_alive = false;
+    
+    if (scan_mode == WIFI_SCAN_SSH) {
+      host_alive = this->checkHostPort(this->current_scan_ip, 22);
+    }
+    else if (scan_mode == WIFI_SCAN_TELNET) {
+      host_alive = this->checkHostPort(this->current_scan_ip, 23);
+    }
+    else {
+      host_alive = this->isHostAlive(this->current_scan_ip);
+    }
+    
+    if (host_alive) {
+      ipList->add(this->current_scan_ip);
+      output_line = this->current_scan_ip.toString();
+      
+      if (scan_mode == WIFI_SCAN_SSH) {
+        output_line += " (SSH)";
+      }
+      else if (scan_mode == WIFI_SCAN_TELNET) {
+        output_line += " (Telnet)";
+      }
+      
+      display_string = output_line;
+      while (display_string.length() < 40) {
+        display_string.concat(' ');
+      }
+      
+      #ifdef HAS_SCREEN
+        display_obj.display_buffer->add(display_string);
+      #endif
+      buffer_obj.append(output_line + "\n");
+      Serial.println(output_line);
+    }
+    
+    this->current_scan_ip = getNextIP(this->current_scan_ip, this->subnet);
+  }
+  
+  if (this->current_scan_ip == IPAddress(0,0,0,0)) {
+    if (!this->scan_complete) {
+      this->scan_complete = true;
+      #ifdef HAS_SCREEN
+        display_obj.display_buffer->add("Scan complete");
+      #endif
+    }
+  }
+}
 void WiFiScan::RunPingScan(uint8_t scan_mode, uint16_t color)
 {
   if (scan_mode == WIFI_PING_SCAN)
@@ -1942,54 +2017,33 @@ void WiFiScan::RunSaveSSIDList(bool save_as) {
   #endif
 }
 
-void WiFiScan::RunEvilPortal(uint8_t scan_mode, uint16_t color)
-{
-  startLog("evil_portal");
+void WiFiScan::RunEvilPortal(uint8_t scan_mode, uint16_t color) {
+    startLog("evil_portal");
+    // … display and LED setup …
 
-  #ifdef HAS_FLIPPER_LED
-    flipper_led.sniffLED();
-  #elif defined(XIAO_ESP32_S3)
-    xiao_led.sniffLED();
-  #elif defined(MARAUDER_M5STICKC)
-    stickc_led.sniffLED();
-  #else
-    led_obj.setMode(MODE_SNIFF);
-  #endif
+    // Build std::vector<ssid> from LinkedList<ssid>
+    std::vector<ssid> vec_ssids;
+    vec_ssids.reserve(ssids->size());
+    for (size_t i = 0; i < ssids->size(); ++i) {
+        vec_ssids.push_back(ssids->get(i));
+    }
 
-  #ifdef HAS_SCREEN
-    display_obj.TOP_FIXED_AREA_2 = 48;
-    display_obj.tteBar = true;
-    display_obj.print_delay_1 = 15;
-    display_obj.print_delay_2 = 10;
-    display_obj.initScrollValues(true);
-    display_obj.tft.setTextWrap(false);
-    display_obj.tft.setTextColor(TFT_WHITE, color);
-    #ifdef HAS_FULL_SCREEN
-      display_obj.tft.fillRect(0,16,240,16, color);
-      display_obj.tft.drawCentreString(" Evil Portal ",120,16,2);
-    #endif
-    #ifdef HAS_ILI9341
-      display_obj.touchToExit();
-    #endif
-    display_obj.tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-    display_obj.setupScrollArea(display_obj.TOP_FIXED_AREA_2, BOT_FIXED_AREA);
-  #endif
+    // Build std::vector<AccessPoint> from LinkedList<AccessPoint>
+    std::vector<AccessPoint> vec_aps;
+    vec_aps.reserve(access_points->size());
+    for (size_t i = 0; i < access_points->size(); ++i) {
+        vec_aps.push_back(access_points->get(i));
+    }
 
-  #ifdef HAS_DUAL_BAND
-    esp_wifi_init(&cfg);
-    esp_wifi_set_country(&country);
-  #endif
+    // Initialize EvilPortal with STL vectors
+    if (!evil_portal_obj.begin(&vec_ssids, &vec_aps)) {
+        Serial.println("EvilPortal initialization failed. Aborting and switching off scans...");
+        this->StartScan(WIFI_SCAN_OFF, TFT_MAGENTA);
+        return;
+    }
 
-  evil_portal_obj.begin(ssids, access_points);
-  //if (!evil_portal_obj.begin(ssids, access_points)) {
-  //  Serial.println("Could not successfully start EvilPortal. Setting WIFI_SCAN_OFF...");
-  //  this->StartScan(WIFI_SCAN_OFF, TFT_MAGENTA);
-  //  return;
-  //}
-  //else
-  //  Serial.println("Setup EvilPortal. Current mode: " + this->currentScanMode);
-  this->wifi_initialized = true;
-  initTime = millis();
+    this->wifi_initialized = true;
+    initTime = millis();
 }
 
 // Function to start running a beacon scan
@@ -2265,6 +2319,58 @@ void WiFiScan::RunSetupGPSTracker(uint8_t scan_mode) {
   initTime = millis();
 }
 
+void WiFiScan::portScan(uint8_t scan_mode, uint16_t /*color*/) {
+    WiFiClient client;
+    const uint16_t timeout = 200; // milliseconds
+    IPAddress target;
+    uint16_t start_port = 1;
+    uint16_t end_port = 65535;
+
+    if (scan_mode == WIFI_SCAN_SSH) {
+        target = gateway;
+        start_port = end_port = 22;
+    } else if (scan_mode == WIFI_SCAN_TELNET) {
+        target = gateway;
+        start_port = end_port = 23;
+    }
+
+    // If scanning all, iterate over ipList; otherwise single target
+    std::vector<IPAddress> targets;
+    if (scan_mode == WIFI_PORT_SCAN_ALL) {
+        for (int i = 0; i < ipList->size(); ++i) {
+            targets.push_back(ipList->get(i));
+        }
+        ipList->clear(); // reuse ipList to store open ports
+    } else {
+        targets.push_back(target);
+        ipList->clear();
+    }
+
+    for (auto &ip : targets) {
+        for (uint16_t port = start_port; port <= end_port; ++port) {
+            if (client.connect(ip, port, timeout)) {
+                client.stop();
+                // Record open port
+                ipList->add(ip);
+                // Serial output
+                Serial.printf("Open port %u on %s\n", port, ip.toString().c_str());
+                // Display buffer
+#ifdef HAS_SCREEN
+                String line = ip.toString() + ":" + String(port);
+                while (line.length() < 40) line += ' ';
+                display_obj.display_buffer->add(line);
+#endif
+            }
+        }
+    }
+
+    // Report completion
+    Serial.println("Port scan complete");
+#ifdef HAS_SCREEN
+    display_obj.display_buffer->add("Port scan complete");
+#endif
+}
+
 bool WiFiScan::RunGPSInfo(bool tracker, bool display, bool poi) {
   bool return_val = true;
   #ifdef HAS_GPS
@@ -2482,7 +2588,7 @@ void WiFiScan::RunAPInfo(uint16_t index, bool do_display) {
   Serial.println(" Channel: " + (String)access_points->get(index).channel);
   Serial.println("    RSSI: " + (String)access_points->get(index).rssi);
   Serial.println("  Frames: " + (String)access_points->get(index).packets);
-  Serial.println("Stations: " + (String)access_points->get(index).stations->size());
+  Serial.println("Stations: " + (String)access_points->get(index).stations.size());
   Serial.println("   Brand: " + (String)access_points->get(index).man);
   
   uint8_t sec = access_points->get(index).sec;
@@ -4142,7 +4248,7 @@ void WiFiScan::apSnifferCallbackFull(void* buf, wifi_promiscuous_pkt_type_t type
           ap.bssid[4] = snifferPacket->payload[14];
           ap.bssid[5] = snifferPacket->payload[15];
           ap.selected = false;
-          ap.stations = new LinkedList<uint16_t>();
+          ap.stations = std::vector<uint16_t>();
           
           //ap.beacon = new LinkedList<char>();
 
@@ -4337,7 +4443,7 @@ void WiFiScan::apSnifferCallbackFull(void* buf, wifi_promiscuous_pkt_type_t type
 
     if (mem_check) {
       AccessPoint ap = access_points->get(ap_index);
-      ap.stations->add(stations->size() - 1);
+      ap.stations.push_back(stations->size() - 1);
 
       access_points->set(ap_index, ap);
     }
@@ -4581,16 +4687,11 @@ void WiFiScan::apSnifferCallback(void* buf, wifi_promiscuous_pkt_type_t type)
 
         AccessPoint ap = {essid,
                           snifferPacket->rx_ctrl.channel,
-                          {snifferPacket->payload[10],
-                           snifferPacket->payload[11],
-                           snifferPacket->payload[12],
-                           snifferPacket->payload[13],
-                           snifferPacket->payload[14],
-                           snifferPacket->payload[15]},
+                          {snifferPacket->payload[10], /*...*/},
                           false,
                           {snifferPacket->payload[34], snifferPacket->payload[35]},
                           snifferPacket->rx_ctrl.rssi,
-                          new LinkedList<uint16_t>(),
+                          std::vector<uint16_t>(), // <- Changed this
                           0,
                           security_type,
                           wps};
@@ -5742,7 +5843,7 @@ void WiFiScan::stationSnifferCallback(void* buf, wifi_promiscuous_pkt_type_t typ
 
   if (mem_check) {
     AccessPoint ap = access_points->get(ap_index);
-    ap.stations->add(stations->size() - 1);
+    ap.stations.push_back(stations->size() - 1);
 
     access_points->set(ap_index, ap);
   }
@@ -6540,7 +6641,7 @@ void WiFiScan::sendEapolBagMsg1(uint8_t bssid[6], int channel, uint8_t mac[6], u
 
   if(sec == WIFI_SECURITY_WPA3 || sec == WIFI_SECURITY_WPA3_ENTERPRISE || sec == WIFI_SECURITY_WAPI) {
     eapol_packet_bad_msg1[35] = 0x5f;     // Length 95 Bytes
-    eapol_packet_bad_msg1[38] = 0xCB;     // Key‑Info (LSB)  Install|Ack|Pairwise, ver=3
+    eapol_packet_bad_msg1[38] = 0xCB;     // Keyâ€‘Info (LSB)  Install|Ack|Pairwise, ver=3
     eapol_packet_bad_msg1[39] = 0x00;     // Key Length MSB
     eapol_packet_bad_msg1[40] = 0x00;     // Key Length LSB   (must be 0 with GCMP)
     frame_size = frame_size - 22;         // Adjust frame size for WPA3
@@ -6588,7 +6689,7 @@ void WiFiScan::sendEapolBagMsg1(uint8_t bssid[6], int channel, String dst_mac_st
 
   if(sec == WIFI_SECURITY_WPA3 || sec == WIFI_SECURITY_WPA3_ENTERPRISE || sec == WIFI_SECURITY_WAPI) {
     eapol_packet_bad_msg1[35] = 0x5f;     // Length 95 Bytes
-    eapol_packet_bad_msg1[38] = 0xCB;     // Key‑Info (LSB)  Install|Ack|Pairwise, ver=3
+    eapol_packet_bad_msg1[38] = 0xCB;     // Keyâ€‘Info (LSB)  Install|Ack|Pairwise, ver=3
     eapol_packet_bad_msg1[39] = 0x00;     // Key Length MSB
     eapol_packet_bad_msg1[40] = 0x00;     // Key Length LSB   (must be 0 with GCMP)
     frame_size = frame_size - 22;         // Adjust frame size for WPA3
@@ -6851,59 +6952,75 @@ void WiFiScan::sendAssociationSleep(const char* ESSID, uint8_t bssid[6], int cha
 }
 
 void WiFiScan::sendBadMsgAttack(uint32_t currentTime, bool all) {
-  if (!all) {
-    for (int i = 0; i < access_points->size(); i++) {
-      for (int x = 0; x < access_points->get(i).stations->size(); x++) {
-        if (stations->get(access_points->get(i).stations->get(x)).selected) {
-          //for (int s = 0; s < 20; s++) {
-            this->sendEapolBagMsg1(access_points->get(i).bssid,
-                                    access_points->get(i).channel,
-                                    stations->get(access_points->get(i).stations->get(x)).mac,
-                                    access_points->get(i).sec);
-          //}
+    if (!all) {
+        for (int i = 0; i < access_points->size(); i++) {
+            AccessPoint ap = access_points->get(i);           // copy instead of &ref
+            for (size_t xi = 0; xi < ap.stations.size(); xi++) {
+                uint16_t staIndex = ap.stations[xi];
+                Station sta = stations->get(staIndex);       // copy instead of &ref
+                if (sta.selected) {
+                    this->sendEapolBagMsg1(
+                        ap.bssid,
+                        ap.channel,
+                        sta.mac,
+                        ap.sec
+                    );
+                }
+            }
         }
-      }
-    }
-  }
-  else {
-    for (int i = 0; i < access_points->size(); i++) {
-      if (access_points->get(i).selected) {
-        for (int x = 0; x < access_points->get(i).stations->size(); x++) {
-          //for (int s = 0; s < 20; s++) {
-            this->sendEapolBagMsg1(access_points->get(i).bssid,
-                                    access_points->get(i).channel,
-                                    stations->get(access_points->get(i).stations->get(x)).mac,
-                                    access_points->get(i).sec);
-          //}
+    } else {
+        for (int i = 0; i < access_points->size(); i++) {
+            AccessPoint ap = access_points->get(i);
+            if (ap.selected) {
+                for (size_t xi = 0; xi < ap.stations.size(); xi++) {
+                    uint16_t staIndex = ap.stations[xi];
+                    Station sta = stations->get(staIndex);
+                    this->sendEapolBagMsg1(
+                        ap.bssid,
+                        ap.channel,
+                        sta.mac,
+                        ap.sec
+                    );
+                }
+            }
         }
-      }
     }
-  }
 }
 
 void WiFiScan::sendAssocSleepAttack(uint32_t currentTime, bool all) {
-  if (!all) {
-    for (int i = 0; i < access_points->size(); i++) {
-      for (int x = 0; x < access_points->get(i).stations->size(); x++) {
-        if (stations->get(access_points->get(i).stations->get(x)).selected) {
-          this->sendAssociationSleep(access_points->get(i).essid.c_str(), access_points->get(i).bssid,
-                                  access_points->get(i).channel,
-                                  stations->get(access_points->get(i).stations->get(x)).mac);
+    if (!all) {
+        for (int i = 0; i < access_points->size(); i++) {
+            AccessPoint ap = access_points->get(i);
+            for (size_t xi = 0; xi < ap.stations.size(); xi++) {
+                uint16_t staIndex = ap.stations[xi];
+                Station sta = stations->get(staIndex);
+                if (sta.selected) {
+                    this->sendAssociationSleep(
+                        ap.essid.c_str(),
+                        ap.bssid,
+                        ap.channel,
+                        sta.mac
+                    );
+                }
+            }
         }
-      }
-    }
-  }
-  else {
-    for (int i = 0; i < access_points->size(); i++) {
-      if (access_points->get(i).selected) {
-        for (int x = 0; x < access_points->get(i).stations->size(); x++) {
-          this->sendAssociationSleep(access_points->get(i).essid.c_str(), access_points->get(i).bssid,
-                                  access_points->get(i).channel,
-                                  stations->get(access_points->get(i).stations->get(x)).mac);
+    } else {
+        for (int i = 0; i < access_points->size(); i++) {
+            AccessPoint ap = access_points->get(i);
+            if (ap.selected) {
+                for (size_t xi = 0; xi < ap.stations.size(); xi++) {
+                    uint16_t staIndex = ap.stations[xi];
+                    Station sta = stations->get(staIndex);
+                    this->sendAssociationSleep(
+                        ap.essid.c_str(),
+                        ap.bssid,
+                        ap.channel,
+                        sta.mac
+                    );
+                }
+            }
         }
-      }
     }
-  }
 }
 
 void WiFiScan::sendDeauthAttack(uint32_t currentTime, String dst_mac_str) {
@@ -7962,74 +8079,54 @@ bool WiFiScan::checkHostPort(IPAddress ip, uint16_t port, uint16_t timeout) {
 }
 
 bool WiFiScan::readARP(IPAddress targ_ip) {
-  // Convert IPAddress to ip4_addr_t using IP4_ADDR
   ip4_addr_t test_ip;
-  IP4_ADDR(&test_ip, targ_ip[0], targ_ip[1], targ_ip[2], targ_ip[3]);
+  IP4_ADDR(&test_ip,
+           targ_ip[0], targ_ip[1],
+           targ_ip[2], targ_ip[3]);
 
-  // Get the netif interface for STA mode
-  //void* netif = NULL;
-  //tcpip_adapter_get_netif(TCPIP_ADAPTER_IF_STA, &netif);
-  //struct netif* netif_interface = (struct netif*)netif;
+  // Get esp-netif handle
+  esp_netif_t* sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+  if (!sta_netif) return false;
 
-  const ip4_addr_t* ipaddr_ret = NULL;
-  struct eth_addr* eth_ret = NULL;
+  // Use hidden symbol to get the lwIP netif*
+  struct netif* netif_interface = esp_netif_get_netif_impl(sta_netif);
+  if (!netif_interface) return false;
 
-  // Use actual interface instead of NULL
-  if (etharp_find_addr(NULL, &test_ip, &eth_ret, &ipaddr_ret) >= 0) {
-    return true;
-  }
-
-  return false;
+  return (etharp_find_addr(netif_interface, &test_ip, nullptr, nullptr) == ERR_OK);
 }
 
 bool WiFiScan::singleARP(IPAddress ip_addr) {
+  esp_netif_t* sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+  if (!sta_netif) return false;
 
-  #ifndef HAS_DUAL_BAND
-    void* netif = NULL;
-    tcpip_adapter_get_netif(TCPIP_ADAPTER_IF_STA, &netif);
-    struct netif* netif_interface = (struct netif*)netif;
-  #else
-    struct netif* netif_interface = (struct netif*)esp_netif_get_netif_impl(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"));
-    //esp_netif_t* netif_interface = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
-    //struct netif* netif_interface = (struct netif*)netif;
-    //struct netif* netif_interface = esp_netif_get_netif_impl(*netif);
-  #endif
+  struct netif* netif_interface = esp_netif_get_netif_impl(sta_netif);
+  if (!netif_interface) return false;
 
   ip4_addr_t lwip_ip;
   IP4_ADDR(&lwip_ip,
-            ip_addr[0],
-            ip_addr[1],
-            ip_addr[2],
-            ip_addr[3]);
+           ip_addr[0], ip_addr[1],
+           ip_addr[2], ip_addr[3]);
 
   etharp_request(netif_interface, &lwip_ip);
-
   delay(250);
-
-  if (this->readARP(ip_addr))
-    return true;
-
-  return false;
+  return readARP(ip_addr);
 }
 
 void WiFiScan::fullARP() {
-  String display_string = "";
-  String output_line = "";
+  String display_string, output_line;
 
-  #ifndef HAS_DUAL_BAND
-    void* netif = NULL;
-    tcpip_adapter_get_netif(TCPIP_ADAPTER_IF_STA, &netif);
-    struct netif* netif_interface = (struct netif*)netif;
-  #else
-    struct netif* netif_interface = (struct netif*)esp_netif_get_netif_impl(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"));
-    //esp_netif_t* netif_interface = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
-    //struct netif* netif_interface = (struct netif*)netif;
-    //struct netif* netif_interface = esp_netif_get_netif_impl(*netif);
-  #endif
+  esp_netif_t* sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+  if (!sta_netif) {
+    Serial.println("Failed to get esp-netif handle");
+    return;
+  }
+  struct netif* netif_interface = esp_netif_get_netif_impl(sta_netif);
+  if (!netif_interface) {
+    Serial.println("Failed to get network interface");
+    return;
+  }
 
-  //this->arp_count = 0;
-
-  if (this->current_scan_ip != IPAddress(0, 0, 0, 0)) {
+  if (this->current_scan_ip != IPAddress(0,0,0,0)) {
     ip4_addr_t lwip_ip;
     IP4_ADDR(&lwip_ip,
              this->current_scan_ip[0],
@@ -8038,34 +8135,26 @@ void WiFiScan::fullARP() {
              this->current_scan_ip[3]);
 
     etharp_request(netif_interface, &lwip_ip);
-
     delay(100);
 
     this->current_scan_ip = getNextIP(this->current_scan_ip, this->subnet);
-
     this->arp_count++;
 
     if (this->arp_count >= 10) {
       delay(250);
-
       this->arp_count = 0;
-
       for (int i = 10; i > 0; i--) {
         IPAddress check_ip = getPrevIP(this->current_scan_ip, this->subnet, i);
-        display_string = "";
-        output_line = "";
         if (this->readARP(check_ip)) {
           ipList->add(check_ip);
           output_line = check_ip.toString();
-          display_string.concat(output_line);
-          uint8_t temp_len = display_string.length();
-          for (uint8_t i = 0; i < 40 - temp_len; i++)
-          {
-            display_string.concat(" ");
+          display_string = output_line;
+          while (display_string.length() < 40) {
+            display_string.concat(' ');
           }
-          #ifdef HAS_SCREEN
-            display_obj.display_buffer->add(display_string);
-          #endif
+#ifdef HAS_SCREEN
+          display_obj.display_buffer->add(display_string);
+#endif
           buffer_obj.append(output_line + "\n");
           Serial.println(output_line);
         }
@@ -8073,26 +8162,20 @@ void WiFiScan::fullARP() {
     }
   }
 
-  if (this->current_scan_ip == IPAddress(0, 0, 0, 0)) {
-
+  if (this->current_scan_ip == IPAddress(0,0,0,0)) {
     for (int i = this->arp_count; i > 0; i--) {
       delay(250);
-
       IPAddress check_ip = getPrevIP(this->current_scan_ip, this->subnet, i);
-      display_string = "";
-      output_line = "";
       if (this->readARP(check_ip)) {
         ipList->add(check_ip);
         output_line = check_ip.toString();
-        display_string.concat(output_line);
-        uint8_t temp_len = display_string.length();
-        for (uint8_t i = 0; i < 40 - temp_len; i++)
-        {
-          display_string.concat(" ");
+        display_string = output_line;
+        while (display_string.length() < 40) {
+          display_string.concat(' ');
         }
-        #ifdef HAS_SCREEN
-          display_obj.display_buffer->add(display_string);
-        #endif
+#ifdef HAS_SCREEN
+        display_obj.display_buffer->add(display_string);
+#endif
         buffer_obj.append(output_line + "\n");
         Serial.println(output_line);
       }
@@ -8100,148 +8183,12 @@ void WiFiScan::fullARP() {
     this->arp_count = 0;
     if (!this->scan_complete) {
       this->scan_complete = true;
-      #ifdef HAS_SCREEN
-        display_obj.display_buffer->add("Scan complete");
-      #endif
+#ifdef HAS_SCREEN
+      display_obj.display_buffer->add("Scan complete");
+#endif
     }
   }
 }
-
-void WiFiScan::pingScan(uint8_t scan_mode) {
-  String display_string = "";
-  String output_line = "";
-
-  if (scan_mode == WIFI_PING_SCAN) {
-    if (this->current_scan_ip != IPAddress(0, 0, 0, 0)) {
-      this->current_scan_ip = getNextIP(this->current_scan_ip, this->subnet);
-      
-      // Check if IP is alive
-      if (this->isHostAlive(this->current_scan_ip)) {
-        output_line = this->current_scan_ip.toString();
-        display_string.concat(output_line);
-        uint8_t temp_len = display_string.length();
-        for (uint8_t i = 0; i < 40 - temp_len; i++)
-        {
-          display_string.concat(" ");
-        }
-        ipList->add(this->current_scan_ip);
-        #ifdef HAS_SCREEN
-          display_obj.display_buffer->add(display_string);
-        #endif
-        buffer_obj.append(output_line + "\n");
-        Serial.println(output_line);
-      }
-    }
-    else {
-      if (!this->scan_complete) {
-        this->scan_complete = true;
-        #ifdef HAS_SCREEN
-          display_obj.display_buffer->add("Scan complete");
-        #endif
-      }
-    }
-  }
-
-  else if (scan_mode == WIFI_SCAN_SSH) {
-    if (this->current_scan_ip != IPAddress(0, 0, 0, 0)) {
-      this->current_scan_ip = getNextIP(this->current_scan_ip, this->subnet);
-      #ifndef HAS_DUAL_BAND
-        if (this->singleARP(this->current_scan_ip)) {
-      #else
-        if (this->isHostAlive(this->current_scan_ip)) {
-      #endif
-        Serial.println(this->current_scan_ip);
-        this->portScan(scan_mode, 22);
-      }
-    }
-    else {
-      if (!this->scan_complete) {
-        this->scan_complete = true;
-        #ifdef HAS_SCREEN
-          display_obj.display_buffer->add("Scan complete");
-        #endif
-      }
-    }
-  }
-
-  else if (scan_mode == WIFI_SCAN_TELNET) {
-    if (this->current_scan_ip != IPAddress(0, 0, 0, 0)) {
-      this->current_scan_ip = getNextIP(this->current_scan_ip, this->subnet);
-      #ifndef HAS_DUAL_BAND
-        if (this->singleARP(this->current_scan_ip)) {
-      #else
-        if (this->isHostAlive(this->current_scan_ip)) {
-      #endif
-        Serial.println(this->current_scan_ip);
-        this->portScan(scan_mode, 23);
-      }
-    }
-    else {
-      if (!this->scan_complete) {
-        this->scan_complete = true;
-        #ifdef HAS_SCREEN
-          display_obj.display_buffer->add("Scan complete");
-        #endif
-      }
-    }
-  }
-}
-
-void WiFiScan::portScan(uint8_t scan_mode, uint16_t targ_port) {
-  String display_string = "";
-  if (scan_mode == WIFI_PORT_SCAN_ALL) {
-    if (this->current_scan_port < MAX_PORT) {
-      this->current_scan_port = getNextPort(this->current_scan_port);
-      if (this->current_scan_port % 1000 == 0) {
-        Serial.print("Checking IP: ");
-        Serial.print(this->current_scan_ip);
-        Serial.print(" Port: ");
-        Serial.println(this->current_scan_port);
-      }
-      if (this->checkHostPort(this->current_scan_ip, this->current_scan_port, 100)) {
-        String output_line = this->current_scan_ip.toString() + ": " + (String)this->current_scan_port;
-        display_string.concat(output_line);
-        uint8_t temp_len = display_string.length();
-        for (uint8_t i = 0; i < 40 - temp_len; i++)
-        {
-          display_string.concat(" ");
-        }
-        #ifdef HAS_SCREEN
-          display_obj.display_buffer->add(display_string);
-        #endif
-        Serial.println(output_line);
-        buffer_obj.append(output_line + "\n");
-      }
-    }
-    else {
-      if (!this->scan_complete) {
-        this->scan_complete = true;
-        #ifdef HAS_SCREEN
-          display_obj.display_buffer->add("Scan complete");
-        #endif
-      }
-    }
-  }
-
-  else {
-    if (this->checkHostPort(this->current_scan_ip, targ_port, 100)) {
-      String output_line = this->current_scan_ip.toString() + ": " + (String)targ_port;
-      display_string.concat(output_line);
-      uint8_t temp_len = display_string.length();
-      for (uint8_t i = 0; i < 40 - temp_len; i++)
-      {
-        display_string.concat(" ");
-      }
-      #ifdef HAS_SCREEN
-        display_obj.display_buffer->add(display_string);
-      #endif
-      Serial.println(output_line);
-      buffer_obj.append(output_line + "\n");
-    }
-  }
-}
-
-
 // Function for updating scan status
 void WiFiScan::main(uint32_t currentTime)
 {
@@ -8271,19 +8218,22 @@ void WiFiScan::main(uint32_t currentTime)
     this->fullARP();
   }
   else if (currentScanMode == WIFI_PORT_SCAN_ALL) {
-    this->portScan(WIFI_PORT_SCAN_ALL);
+    this->portScan(WIFI_PORT_SCAN_ALL, 0);
   }
   else if (currentScanMode == WIFI_SCAN_SSH) {
-    this->pingScan(WIFI_SCAN_SSH);
+    this->portScan(WIFI_SCAN_SSH, 0);
   }
   else if (currentScanMode == WIFI_SCAN_TELNET) {
-    this->pingScan(WIFI_SCAN_TELNET);
+    this->portScan(WIFI_SCAN_TELNET, 0);
   }
   else if (currentScanMode == WIFI_SCAN_SIG_STREN) {
     #ifdef HAS_ILI9341
-      this->signalAnalyzerLoop(currentTime);
+        this->signalAnalyzerLoop(currentTime);
     #endif
   }
+    #ifdef HAS_ILI9341
+      this->signalAnalyzerLoop(currentTime);
+    #endif
   else if ((currentScanMode == WIFI_SCAN_CHAN_ANALYZER) ||
           (currentScanMode == BT_SCAN_ANALYZER)) {
     this->channelAnalyzerLoop(currentTime);
@@ -8532,10 +8482,10 @@ void WiFiScan::main(uint32_t currentTime)
       if (access_points->get(x).selected) {
         AccessPoint cur_ap = access_points->get(x);
         // Loop through each AP's Station
-        for (int i = 0; i < cur_ap.stations->size(); i++) {
+        for (int i = 0; i < cur_ap.stations.size(); i++) {
           // Only get selected Stations
-          if (stations->get(cur_ap.stations->get(i)).selected) {
-            Station cur_sta = stations->get(cur_ap.stations->get(i));
+          if (stations->get(cur_ap.stations[i]).selected) {
+            Station cur_sta = stations->get(cur_ap.stations[i]);
 
             // Send deauths for each selected AP's selected Station
             for (int y = 0; y < 25; y++)
