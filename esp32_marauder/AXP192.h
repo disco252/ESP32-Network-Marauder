@@ -44,6 +44,7 @@ class AXP192 {
     void SetSleep(void);
     void DeepSleep(uint64_t time_in_us = 0);
     void LightSleep(uint64_t time_in_us = 0);
+
     uint8_t GetWarningLeve(void);
 
    public:
