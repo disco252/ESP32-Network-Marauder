@@ -5,7 +5,7 @@
 
 #include <MicroNMEA.h>
 #include <SoftwareSerial.h>
-#include <LinkedList.h>
+#include <vector>  
 
 #include "configs.h"
 
@@ -59,7 +59,7 @@ class GpsInterface {
     void setType(String t);
 
     void enqueue(MicroNMEA& nmea);
-    LinkedList<nmea_sentence_t>* get_queue();
+    std::vector<nmea_sentence_t>* get_queue();
     void flush_queue();
     void flush_text();
     void new_queue();
@@ -104,12 +104,12 @@ class GpsInterface {
 
     type_t type_flag = GPSTYPE_NATIVE;
 
-    bool queue_enabled_flag=0;
-    LinkedList<nmea_sentence_t> *queue=NULL;
+    bool queue_enabled_flag= 0;
+    std::vector<nmea_sentence_t> *queue= 0;
 
-    unsigned int text_cycles=0;
-    LinkedList<String> *text_in=NULL;
-    LinkedList<String> *text=NULL;
+    unsigned int text_cycles= 0;
+    std::vector<String> *text_in= 0;
+    std::vector<String> *text= 0;
 
     String generateType();
     void flush_queue_text();
