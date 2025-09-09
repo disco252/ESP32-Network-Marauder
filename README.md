@@ -49,9 +49,13 @@ UrlEncode
 
 
 Parts:
+
 ATGM336H GPS/BDS
+
 DS3231 RTC
+
 5 Direction button 
+
 LAN8720
 1.3" OLED i2c Display
 Espressif ESP32-dev-c6
