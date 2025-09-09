@@ -15,18 +15,33 @@
 Arduino IDE required builds:
 
 Adafruit BusIO
+
 Adafruit GFX Library
+
 Adafruit MAX1704X
+
 Adafruit SSD1306
+
 Arduinojson
+
 Async TCP
+
 Esp Async Webserver
+
 ESP32-Targz
+
 ESPAsyncTCP
+
 EspSoftwareSerial
+
 LinkedList v1.3.3 <-- earlier version
+
 MicroNMEA
+
 RTClib
+
 TFT_eSPI
+
 TinyGPSPlus
+
 UrlEncode
