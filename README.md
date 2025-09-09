@@ -10,7 +10,7 @@
   <br><br>
   <a href="https://github.com/justcallmekoko/ESP32Marauder/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/github/license/mashape/apistatus.svg"></a>
 
-
+Instructinos: get esp-marauder folder, build to C6 using Arduino IDE.
 
 Arduino IDE required builds:
 
